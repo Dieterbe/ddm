@@ -1,0 +1,631 @@
+#!/bin/bash
+
+# ddm v0.34
+# Written by Dieter Plaetinck
+# http://dieter.plaetinck.be
+
+# This code is licensed under GPL v3. See http://www.gnu.org/licenses/gpl-3.0.txt
+
+#TODO: ignore variable that will always be used for ignoring by cp/rsync/svn/..
+#NOTE: how useful is the 'direct' datatype? do we need to do anything?
+#NOTE: need to think about if it would be useful to have datasets that are multiple dataset types for different repos
+
+ #
+ # SOME MISC FUNCTIONS
+ #
+
+
+usage()
+{
+cat << EOF
+usage: `basename $0` options
+
+OPTIONS:
+   -d                Dataset (name of directory)
+   -h                Show this message
+   -m                Message (used for commits in svn, ignored otherwise)
+   -u                Update
+   -c                Commit
+   -o                Checkout (default repo type)
+   -O <repo-type>    Checkout using specific repo type (one of: $ALLOWED_REPO_TYPES)
+   -t <dataset-type> Specify dataset-type (selection,copy, ...) (only honoured for checkouts)
+   -v                Verbose
+EOF
+}
+
+ask_user ()
+{
+	# $1 : question to ask
+	# $2 : 1 for yes/no question
+	
+	if [ -n "$1" ]
+	then
+		if [ "$2" == '1' ]
+		then
+			echo "$1 (y/n)"
+		else
+			echo "$1"
+		fi
+	fi
+		
+	read user_response
+	
+	if [ "$2" == '1' ]
+	then
+		if [ "$user_response" == 'Y' ]
+		then
+			user_response='y'
+		fi
+	fi
+}
+
+echo_verbose ()
+{
+	if [ -n "$VERBOSE" ]
+	then
+		echo "$@"
+	fi
+}
+
+echo_die ()
+{
+	echo "$@" >&2
+	exit 2
+}
+
+check_is_in()
+{
+	test=$1
+	allowed=$2
+	type=$3
+	
+	found=0
+	
+	for all in $allowed
+	do
+		if [ $all == $test ]
+		then
+			found=1
+		fi
+	done
+	
+	if [ $found -eq 0 ]
+	then
+		echo_die "$test is not an allowed/known $type (allowed: $allowed)"
+	fi
+}
+
+check_writable_dir ()
+{
+ #optional arg2 : type of dir (str)
+	if [ -n "$1" ]
+	then
+		path="$1"
+	else
+		path=`pwd`
+	fi
+	
+	if [ ! -d "$path" ]
+	then
+		echo_die "$2 $path does not exist or is not a directory"
+	elif [ ! -r "$path" ]
+	then
+		echo_die "$2 $path is an existing directory, but is not readable"
+	elif [ ! -x "$path" ] # not sure if this is really needed...
+	then
+		echo_die "$2 $path is a readable directory, but not executable"
+	fi
+}
+
+check_remote_path ()
+{
+	path=$1
+	repotype=$2
+	
+	if [ "$repotype" == 'svn' ]
+	then
+		if [ "$IGNORE_DATASET_REMOTE_SVN" -eq 0 ]
+		then
+			output=`svn info $path 2>&1`
+			if [ $? -gt 0 ]
+			then
+				echo "Something appears to be wrong with the $repotype repo $path :"
+				echo_die "$output"
+			fi
+		fi
+	elif [ "$repotype" == 'vfs' ]
+	then
+		check_writable_dir "$path" "$repotype repo" 
+	fi
+}
+
+check_local_path ()
+{
+	path=$1
+	repotype=$2
+	
+	if [ "$repotype" == 'svn' ]
+	then
+		output=`svn info $path 2>&1`
+		if [ $? -gt 0 ]
+		then
+			echo "Something appears to be wrong with the $repotype dataset $path :"
+			echo_die "$output"
+		fi
+
+		if [ "$IGNORE_DATASET_REMOTE_SVN" -eq 0 ]
+		then
+			remote=`echo "$output" | grep 'URL: ' | awk '{print $2}'`
+			if [ "$remote" != "$DATASET_REMOTE" ]
+			then
+				echo "Mismatch between remote svn paths:"
+				echo ".ddm : $DATASET_REMOTE"
+				echo "local svn info : $remote"
+			fi
+		fi
+	elif [ "$repotype" == 'vfs' ]
+	then
+		check_writable_dir "$path" "$repotype dataset"
+	fi
+}
+
+
+set_dataset_info()
+{
+	# here we set all the variables, based on what DATASET_DIR_NAME_REL (given by user) & PWD are
+	# DATASET_LOCAL=''      # full path to dataset locally (including type suffix if any)
+	# DATASET_REMOTE=''     # full path to dataset remotely (or locally if network mount)
+	# DATASET_PATH=''       # just the path (until parent directory of dataset) ( aka dirname )
+	# DATASET_DIR_NAME_REL  # identifier to dataset, taken against pwd ( could be '.','..', nothing at all, dirname, full path, ..) 
+	# DATASET_DIR_NAME=''   # like $DATASET_LOCAL but no path ( aka basename) 
+	# DATASET_NAME=''       # like $DATASET_DIR_NAME but no type suffix
+	# DATASET_TYPE=''       # buffer,copy,extensions etc
+
+	if [ -z "$DATASET_DIR_NAME_REL" ] || [ "$DATASET_DIR_NAME_REL" == '.' ]
+	then
+		DATASET_LOCAL=$PWD
+	elif [ "$DATASET_DIR_NAME_REL" == '..' ]
+	then
+		DATASET_LOCAL=`echo $PWD | xargs dirname`
+	else
+		#remove trailing /, if any
+		DATASET_DIR_NAME_REL=`echo $DATASET_DIR_NAME_REL | sed 's#/$##'`
+	
+		#prepend path, if needed
+		if [ `echo $DATASET_DIR_NAME_REL | grep '/' | wc -l` -eq 0 ]
+		then
+			if [ $PWD != '/' ]
+			then
+				DATASET_LOCAL="$PWD/$DATASET_DIR_NAME_REL"
+			else
+				DATASET_LOCAL="/$DATASET_DIR_NAME_REL"
+			fi
+		fi
+	fi
+
+	DATASET_DIR_NAME=`echo $DATASET_LOCAL    | xargs basename`
+	DATASET_PATH=`    echo $DATASET_LOCAL    | xargs dirname`
+	DATASET_NAME=`    echo $DATASET_DIR_NAME | sed 's/-[^-]*$//'`
+	DATASET_TYPE=`    echo $DATASET_DIR_NAME | sed 's/.*-//'`
+	[ "$DATASET_TYPE" == "$DATASET_DIR_NAME" ] &&  DATASET_TYPE=$DEFAULT_DATASET_TYPE
+	[ "$REPO_TYPE" == 'svn' ] && DATASET_REMOTE=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_NAME}${SVN_SUFFIX}"
+	[ "$REPO_TYPE" == 'vfs' ] && DATASET_REMOTE=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_NAME}${VFS_SUFFIX}"
+}
+
+
+
+ #
+ # WORKER FUNCTIONS TO BE USED BY THE CALLBACKS
+ #
+ 
+no_action ()
+{
+	echo "No action taken.  This is either not implemented yet or just wouldn't make much sense."
+	echo "You can 1) implement what you want in $DATASET_LOCAL/.ddm"
+	echo "        2) file a feature request if this seems reasonable (or send a patch)"
+	if [ -n "$1" ]
+	then
+		echo "Note from the author: $1"
+	fi
+}
+
+# this is a useful function for selection datasets: upon execution new files are added and old ones purged ( ordered alphabetically)
+# grepstring is everything (but the space) that comes in front of the filepath/names ( eg 'mplayer <args>')
+slidewindow ()
+{
+	if [ -z "$1" ]
+	then
+		echo_die "Specify a string to grep on as first argument to slidewindow function"
+	fi
+	GREPSTRING=$1
+	GET_NEW=${2:-'10'}
+	KEEP_OLD=${3:-'0'}
+
+	#echo "DEBUG GREPSTRING $GREPSTRING GETNEW $GET_NEW KEEPOLD $KEEP_OLD DATASET DIRNAME $DATASET_DIR_NAME"
+
+	history -a
+	list=`grep "$GREPSTRING" ~/.bash_history | grep "$DATASET_DIR_NAME" | grep -v '*' | grep -v '?' | grep -v grep`
+	seenlist="${list//$GREPSTRING /}"
+        
+	#remove all but the last $KEEP_OLD
+	deletelist=`echo "$seenlist" | head --lines=-$KEEP_OLD`
+	deletelistsize=`echo "$deletelist" | wc -l`
+	
+	#echo "DEBUG SEEN $seenlist DELETE $deletelist"
+	#TODO: unique entries
+	echo_verbose "Deleting old files... ($deletelistsize items)."
+	IFS=$'\n'
+	for seen in $deletelist
+	do
+		seen=`echo $seen | sed 's/ $//'`
+		if [ "$seen" != '..' ] && [ "$seen" != '.' ]
+		then
+                        seen=`echo $seen | xargs echo` #remove escape characters.. dont know if this is the best way
+			seen=`basename $seen`
+                        if [ `pwd` != "$DATASET_LOCAL" ]
+                        then
+                        	seen="$DATASET_LOCAL/$seen"
+                        fi
+                        
+                                echo_verbose -n " * $seen... "
+
+                        if [ -f "$seen" ]
+                        then
+                                echo_verbose -n "found . removing... "
+                                rm "$seen"
+				if [ $? -eq 0 ]
+				then
+					echo_verbose "success"
+				else
+					echo_verbose "failed"
+                        	fi
+                        else
+                                echo_verbose "not found"
+                        fi
+                fi
+        done
+        
+        #show the kept files
+        
+        keeplist=`echo "$seenlist" | tail -n $KEEP_OLD`
+	keeplistsize=`echo "$keeplist" | wc -l`
+	
+	echo_verbose "Keeping these files... ($keeplistsize items)."
+        for keep in $keeplist
+        do
+        	keep=`echo $keep | xargs echo`
+        	keep=`basename $keep`
+		if [ `pwd` != "$DATASET_LOCAL" ]
+		then
+			keep="$DATASET_LOCAL/$keep"
+		fi
+
+        	echo_verbose " * $keep"
+        done
+        	
+        #getting new files
+        last=`echo "$seenlist" | tail -n 1 | xargs echo`
+        last=`basename "$last"` #*after* this entry the entries start that we want
+        
+        newlist=`ls -1 "$DATASET_REMOTE" | sort -g | grep -A $GET_NEW "$last"`
+        if [ $? -gt 0 ]
+	then
+		echo_die "Could not find last known element $last in repository $DATASET_REMOTE"
+	fi
+	getlist=`echo "$newlist" | tail -n +2`
+	getlistsize=`echo "$getlist" | wc -l`
+	
+	#echo "LAST $last DATASET_REMOTE $DATASET_REMOTE NEWLIST $newlist GETLIST $getlist (size $getlistsize)"
+	echo_verbose "Copying new files... ($getlistsize items)."
+	IFS=$'\n'
+	for new in $getlist
+	do
+		new_displ=$new
+		if [ `pwd` != "$DATASET_LOCAL" ]
+		then
+			new_displ="$DATASET_LOCAL/$new"
+		fi
+
+		echo_verbose -n " * $new_displ... "
+		#cp "$DATASET_REMOTE/$new" "$DATASET_LOCAL/"
+		rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE/$new" "$DATASET_LOCAL/"
+		if [ $? -eq 0 ]
+		then
+			echo_verbose "success"
+		else
+			echo_verbose "failed"
+		fi
+	done
+		       
+}
+
+wrap_rsync ()
+{
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
+	then
+		echo_die 'internal error: insufficient parameters to rsync wrapper'
+	fi
+	if [ "$5" == '1' ]
+	then
+		ask_user 'delete extraneous files from dest dirs? (rsync --delete)' 1
+		if [ "$user_response" == 'y' ]
+		then
+			rsync "$1" --delete --exclude="$2" "$3" "$4"
+		else
+			rsync "$1" --exclude="$2" "$3" "$4"
+		fi
+	else
+		rsync "$1" --exclude="$2" "$3" "$4"
+	fi
+	result=$?
+	if [ $result -eq 0 ]
+	then
+		echo "rsync success"
+		if [ "$6" == '1' ]
+		then
+			ask_user 'locally delete files that we successfully sent to server?' 1
+			#TODO: implement this
+		fi
+	else
+		echo "rsync failed"
+	fi
+}
+
+
+ #
+ # CALLBACKS. CAN BE OVERWRITTEN IN DATASET-SPECIFIC .ddm FILES. there you can even ignore the $DATASET_TYPE and REPO_TYPE if you want
+ #
+
+
+precheckout ()
+{
+	true
+}
+docheckout ()
+{
+	if [ "$REPO_TYPE" == 'svn' ]
+	then
+		if [ $DATASET_TYPE == "buffer" ]
+		then
+			no_action "maybe we could copy (only) the remote directories as template hierachy"
+		elif [ $DATASET_TYPE == "extension" ]
+		then
+			no_action
+		elif [ $DATASET_TYPE == "direct" ]
+		then
+			no_action
+		elif [ $DATASET_TYPE == "copy" ] || [ $DATASET_TYPE == "selection" ]
+		then
+			if [ $DATASET_TYPE == "selection" ]
+			then
+				echo_verbose "You are checking out a selection: i assume you will delete what you don't need afterwards?"
+			fi
+			svn checkout $DATASET_REMOTE $DATASET_LOCAL
+			svn propset svn:ignore .ddm $DATASET_LOCAL #TODO: does this conflict with existing properties?
+		fi
+	elif [ "$REPO_TYPE" == 'vfs' ]
+	then
+		if [ $DATASET_TYPE == "copy" ] || [ $DATASET_TYPE == "selection" ]
+		then
+			if [ $DATASET_TYPE == "selection" ]
+			then
+				echo_verbose "You are checking out a selection: i assume you will delete what you don't need afterwards?"
+			fi
+			wrap_rsync -avu '**.ddm' "$DATASET_REMOTE/" "$DATASET_LOCAL"	
+		elif [ $DATASET_TYPE == "direct" ]
+		then
+			no_action "TODO: check for mountpoints, maybe parents and try to mount"
+		else
+			no_action
+		fi
+	fi
+}
+postcheckout ()
+{
+	true
+}			
+
+precommit ()
+{
+	true
+}
+docommit ()
+{
+	if [ "$REPO_TYPE" == 'svn' ]
+	then
+		svn commit $DATASET_LOCAL -m $MSG
+	elif [ "$REPO_TYPE" == 'vfs' ]
+	then
+		if [ $DATASET_TYPE == "copy" ]
+		then
+			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL/" "$DATASET_REMOTE" 1 
+		elif [ $DATASET_TYPE == "buffer" ]
+		then
+			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL/" "$DATASET_REMOTE" 0 1
+		elif [ $DATASET_TYPE == "selection" ]
+		then
+			no_action "Maybe the user made changes to the small subset of data he has and wants to commit those..
+			          gonna be hard to implement something like that..."
+		elif [ $DATASET_TYPE == "extension" ]
+		then
+			no_action "Since this is an extension, i woulnd't know where to send data to..."
+		elif [ $DATASET_TYPE == "direct" ]
+		then
+			no_action "Maybe we could umount? ( if it's a direct mount) and ask to umount if the parent is a mountpoint"
+		fi
+	fi 
+
+}
+postcommit ()
+{
+	true
+}
+
+preupdate ()
+{
+	true
+}
+doupdate ()
+{
+	if [ "$REPO_TYPE" == 'svn' ]
+	then
+		svn update $DATASET_LOCAL
+	elif [ "$REPO_TYPE" == 'vfs' ]
+	then
+		rsync -avu --exclude='**.ddm' $DATASET_REMOTE/ $DATASET_LOCAL
+	fi 
+
+
+}
+postupdate ()
+{
+	true
+}	
+
+
+
+ #
+ # START THE ACTUAL PROCESSING
+ #
+
+PWD=`pwd`
+
+SVN_BASE=''
+SVN_PREFIX=''
+SVN_SUFFIX=''
+VFS_BASE=''
+VFS_PREFIX=''
+VFS_SUFFIX=''
+
+DEFAULT_REPO_TYPE='vfs'
+ALLOWED_REPO_TYPES='vfs svn'
+ALLOWED_DATASET_TYPES='buffer copy direct extension selection'
+IGNORE_DATASET_REMOTE_SVN=0
+
+if [ -r ~/.ddm ]
+then
+	source ~/.ddm
+	if [ $? -gt 0 ]
+	then
+		echo_die 'Problem encountered while loading ~/.ddm'
+	fi
+fi
+
+DEFAULT_DATASET_TYPE='copy' # i dont think this should be changed by the user
+
+	
+check_is_in "$DEFAULT_REPO_TYPE" "$ALLOWED_REPO_TYPES" 'repo type'
+
+REPO_TYPE=$DEFAULT_REPO_TYPE
+
+DATASET_DIR_NAME_REL=''
+MSG=''
+
+while getopts “cd:hm:oO:t:uv” OPTION
+do
+	case $OPTION in
+	c)
+		ACTION=commit
+		;;
+	d)
+		if [ -z "$OPTARG" ]
+		then
+			echo_die 'dont forget to specify which dataset you want...'
+		fi
+		DATASET_DIR_NAME_REL=$OPTARG
+		;;
+	h)
+		usage
+		exit 0
+		;;
+	m)
+		MSG=$OPTARG
+		;;
+	o)
+		ACTION=checkout
+		;;
+	O)
+		ACTION=checkout
+		if [ -n "$OPTARG" ]
+		then
+			check_is_in "$OPTARG" "$ALLOWED_REPO_TYPES" 'repo type'
+			REPO_TYPE=$OPTARG
+		else
+			echo_die 'You must specify a repo type when using -O'
+		fi
+		;;
+	t)
+		if [ -n "$OPTARG" ]
+		then
+			check_is_in "$OPTARG" "$ALLOWED_DATASET_TYPES" 'dataset type'
+			DATASET_TYPE=$OPTARG
+		else
+			echo_die 'You must specify a dataset type when using -t'
+		fi
+		;;
+		 
+	u)
+		ACTION=update
+		;;
+	v)
+		VERBOSE=1
+		;;
+	?)
+		usage
+		exit 1
+		;;
+	esac
+done
+
+if [ -z "$ACTION" ]
+then
+	echo 'No action specified. bye.'
+	
+	exit 0
+fi
+
+set_dataset_info
+
+# override some stuff in the .ddm script in the dataset
+
+if [ -r $DATASET_LOCAL/.ddm ]
+then
+	source $DATASET_LOCAL/.ddm
+	if [ $? -ne 0 ]
+	then
+		echo_die "Error: invalid $DATASET_LOCAL/.ddm"
+	else
+		echo_verbose "Included $DATASET_LOCAL/.ddm"
+	fi
+fi
+
+set_dataset_info
+
+check_remote_path "$DATASET_REMOTE" "$REPO_TYPE"
+
+if [ "$ACTION" != checkout ]
+then
+	check_local_path "$DATASET_LOCAL" "$REPO_TYPE"
+else
+	check_writable_dir `dirname "$DATASET_LOCAL"` "parent dir for $REPO_TYPE dataset"
+fi	
+
+#if nothing else, We assume it is a dataset of type copy. cheesy way to catch typo's too...
+if [ "$DATASET_TYPE" != buffer ] && [ "$DATASET_TYPE" != direct ] && [ "$DATASET_TYPE" != extension ] && [ "$DATASET_TYPE" != selection ]
+then
+	if [ -n "$DATASET_TYPE" ] && [ "$DATASET_TYPE" != $DEFAULT_DATASET_TYPE ]
+	then
+		echo "Unknown dataset type $DATASET_TYPE. defaulting to $DEFAULT_DATASET_TYPE"
+	fi
+	DATASET_TYPE=$DEFAULT_DATASET_TYPE
+fi
+
+check_is_in "$ACTION" 'checkout update commit' action
+
+echo_verbose "action $ACTION on dataset name $DATASET_NAME type $DATASET_TYPE"
+
+pre$ACTION
+do$ACTION
+post$ACTION
+
+echo_verbose "finished"
