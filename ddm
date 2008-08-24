@@ -1,17 +1,35 @@
 #!/bin/bash
 
-# ddm v0.34
+
+# mail proposal 3 met daarin subdirs, environment variable die zegt of we music collection of selection usen
+#practical uses
+# media players keep track of ratings, the ratings apply to the same song in both directories
+# edit a id3 tag in media players -> apply it on other file in collection when you return home (not really task of player though)
+# media player known what music you like, it can maintain the selection (or we can use other tools like rsync, but the app must provide us the list based on app-specific lingo like ratings/last played etc)
+
+
+# ddm v0.4b
 # Written by Dieter Plaetinck
 # http://dieter.plaetinck.be
 
 # This code is licensed under GPL v3. See http://www.gnu.org/licenses/gpl-3.0.txt
 
 #TODO: ignore variable that will always be used for ignoring by cp/rsync/svn/..
-#TODO: implement basedir spec 0.6 http://standards.freedesktop.org/basedir-spec/basedir-spec-0.6.html
-#TODO: work with xdg directories (may work already, convert ~ and see if it still works)
+#TODO: honor basedir spec 0.6 http://standards.freedesktop.org/basedir-spec/basedir-spec-0.6.html except the 'global' stuff (/usr/share,/etc)
+#TODO: be compatible with xdg userdirectories (may work already, convert ~ and see if it still works) http://www.freedesktop.org/wiki/Software/xdg-user-dirs
 #NOTE: how useful is the 'direct' datatype? do we need to do anything?
+#NOTE: a cache datatype? cache maintained by other program.. not needed in ddm i think
 #NOTE: need to think about if it would be useful to have datasets that are multiple dataset types for different repos
 
+# basedir spec notes
+# If, when attempting to write a file, the destination dir not exist try to create as 0700. If the exists dont change perms
+# this means we should bail out and show error if write fails
+ 
+# When we cannot open/read a file we need, then the processing of the file should be skipped.
+#If due to this a required file could not be found at all, the application may chose to present an error message to the user. 
+
+
+ 
  #
  # SOME MISC FUNCTIONS
  #
@@ -612,6 +630,12 @@ DEFAULT_REPO_TYPE='vfs'
 ALLOWED_REPO_TYPES='vfs svn'
 ALLOWED_DATASET_TYPES='buffer copy direct extension selection'
 IGNORE_DATASET_REMOTE_SVN=0
+
+XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+XDG_CONFIG_DIRS=${XDG_CONFIG_DIRS:-/etc/xdg}
+XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+XDG_DATA_DIRS=${XDG_DATA_DIRS:-'/usr/local/share/:/usr/share/'}
+XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 
 if [ -r ~/.ddm ]
 then
