@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# this is a useful function for selection datasets: upon execution new files are added and old ones purged ( ordered alphabetically)
+# Written by Dieter Plaetinck
+# http://dieter.plaetinck.be
+# This code is licensed under GPL v3. See http://www.gnu.org/licenses/gpl-3.0.txt
+
+# this is a useful plugin for selection datasets: upon execution new files are added and old ones purged ( ordered alphabetically)
 # grepstring is everything (but the space) that comes in front of the filepath/names ( eg 'mplayer <args>')
+
 slidewindow ()
 {
 	if [ -z "$1" ]

@@ -2,20 +2,14 @@
 
 #changes : the 2 freedesktop standards, config for ddmrc, share for plugins, exaile plugin, 2 ways to name selection so it can be used with user-dirs
 
-# mail proposal 3 met daarin subdirs, environment variable die zegt of we music collection of selection usen
-#practical uses
-# media players keep track of ratings, the ratings apply to the same song in both directories
-# edit a id3 tag in media players -> apply it on other file in collection when you return home (not really task of player though)
-# media player known what music you like, it can maintain the selection (or we can use other tools like rsync, but the app must provide us the list based on app-specific lingo like ratings/last played etc)
-
-
 # ddm v0.4b
 # Written by Dieter Plaetinck
 # http://dieter.plaetinck.be
-
 # This code is licensed under GPL v3. See http://www.gnu.org/licenses/gpl-3.0.txt
+
 #TODO: ignore variable that will always be used for ignoring by cp/rsync/svn/..
 #TODO: be compatible with xdg userdirectories (may work already, convert ~ and see if it still works) http://www.freedesktop.org/wiki/Software/xdg-user-dirs
+
 #NOTE: how useful is the 'direct' datatype? do we need to do anything?
 #NOTE: a cache datatype? cache maintained by other program.. not needed in ddm i think
 #NOTE: need to think about if it would be useful to have datasets that are multiple dataset types for different repos
@@ -82,6 +76,7 @@ echo_verbose ()
 	if [ -n "$VERBOSE" ]
 	then
 		#TODO: emits a newline too many when there is a newline at the end of "$@" such as is the case when echo_verbose_buffer is echo'd. to be fixed someday
+		#echo -e "${@/\n\$/}"
 		echo -e "$@"
 	fi
 }
@@ -259,7 +254,7 @@ deletefiles ()
 		if [ "$file" != '..' ] && [ "$file" != '.' ]
 		then
                         file=`echo $file | xargs echo` #remove escape characters.. dont know if this is the best way
-			file=`basename $file`
+			#file=`basename $file` #deprecated : lets make it the responsability of the caller to decide what he wants to delete
                         if [ `pwd` != "$DATASET_LOCAL" ]
                         then
                         	file="$DATASET_LOCAL/$file"
@@ -323,12 +318,24 @@ getfiles () #copy files from repo into dataset
 
 		echo_verbose -n " * $file_displ... "
 		#cp "$DATASET_REMOTE/$file" "$DATASET_LOCAL/"
-		rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE/$file" "$DATASET_LOCAL/"
+		dirname=`dirname "$file"`
+		if [ $dirname != '.' ]
+		then
+			mkdir -p $DATASET_LOCAL/$dirname
+			if [ $? -gt 0 ]
+			then
+				echo_verbose "failed (could not make directory $dirname)"
+				break
+			fi
+			rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE/$file" "$DATASET_LOCAL/$dirname/"
+		else
+			rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE/$file" "$DATASET_LOCAL/"
+		fi
 		if [ $? -eq 0 ]
 		then
 			echo_verbose "success"
 		else
-			echo_verbose "failed"
+			echo_verbose "failed (could not rsync)"
 		fi
 	done
 		       
@@ -499,6 +506,27 @@ postupdate ()
  # START THE ACTUAL PROCESSING
  #
 
+# load ddm plugins according to the XDG basedir spec
+
+for data_dir in `echo ${XDG_DATA_HOME:-$HOME/.local/share}:${XDG_DATA_DIRS:-'/usr/local/share/:/usr/share/'} | sed 's/:/\t/g'`
+do
+	data_dir=`echo $data_dir | sed 's#/$##'`
+	if [ -r $data_dir/ddm/plugins ]
+	then
+		for plugin in $data_dir/ddm/plugins/*.sh
+		do
+			echo_verbose_buffer="${echo_verbose_buffer}Plugin   $plugin loading...\n"
+			source "$plugin"
+			if [ $? -gt 0 ]
+			then
+				echo "Warning: $plugin loading failed"
+			else
+				echo_verbose_buffer="${echo_verbose_buffer}Plugin   $plugin loaded\n"
+			fi
+		done
+	fi
+done
+
 #VARS OVERRIDABLE BY USER
 
 SVN_BASE=''
@@ -527,26 +555,19 @@ do
 		then
 			echo_die "There is a problem with your $config_dir/ddm/ddmrc . probably incorrect syntax"
 		else
-			echo_verbose_buffer="$echo_verbose_buffer Successfully included ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
+			echo_verbose_buffer="${echo_verbose_buffer}Successfully included ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
 		fi
 		break
 	fi
 done
 if [ -z "$ddmrc_included" ]
 then
-	echo_verbose_buffer="$echo_verbose_buffer No ddmrc included.  If you want to override some values, create a ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
+	echo_verbose_buffer="${echo_verbose_buffer}No ddmrc included.  If you want to override some values, create a ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
 fi
 
 #VARS NOT OVERRIDABLE BY USER
 
 PWD=`pwd`
-
-XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
-XDG_CONFIG_DIRS=${XDG_CONFIG_DIRS:-/etc/xdg}
-XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
-XDG_DATA_DIRS=${XDG_DATA_DIRS:-'/usr/local/share/:/usr/share/'}
-XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
-
 
 DEFAULT_DATASET_TYPE='copy' # i dont think this should be changed by the user
 ACTION_HELPSTRING="(one of: $ALLOWED_ACTIONS)"
@@ -652,26 +673,6 @@ then
 else
 	check_writable_dir `dirname "$DATASET_LOCAL"` "parent dir for $REPO_TYPE dataset"
 fi	
-
-# load ddm plugins according to the XDG basedir spec
-for data_dir in `echo ${XDG_DATA_HOME}:${XDG_DATA_DIRS} | sed 's/:/\t/g'`
-do
-	data_dir=`echo $data_dir | sed 's#/$##'`
-	if [ -r $data_dir/ddm/plugins ]
-	then
-		for plugin in $data_dir/ddm/plugins/*.sh
-		do
-			echo_verbose "Plugin   $plugin loading..."
-			source "$plugin"
-			if [ $? -gt 0 ]
-			then
-				echo "Warning: $plugin loading failed"
-			else
-				echo_verbose "Plugin   $plugin loaded"
-			fi
-		done
-	fi
-done
 
 echo_verbose "action $ACTION on dataset name $DATASET_NAME type $DATASET_TYPE"
 
