@@ -738,17 +738,6 @@ else
 	check_writable_dir `dirname "$DATASET_LOCAL"` "parent dir for $REPO_TYPE dataset"
 fi	
 
-#if nothing else, We assume it is a dataset of type copy. cheesy way to catch typo's too...
-if [ "$DATASET_TYPE" != buffer ] && [ "$DATASET_TYPE" != direct ] && [ "$DATASET_TYPE" != extension ] && [ "$DATASET_TYPE" != selection ]
-then
-	if [ -n "$DATASET_TYPE" ] && [ "$DATASET_TYPE" != $DEFAULT_DATASET_TYPE ]
-	then
-		echo "Unknown dataset type $DATASET_TYPE. defaulting to $DEFAULT_DATASET_TYPE"
-	fi
-	DATASET_TYPE=$DEFAULT_DATASET_TYPE
-fi
-
-
 # load ddm plugins according to the XDG basedir spec
 for data_dir in `echo ${XDG_DATA_HOME}:${XDG_DATA_DIRS} | sed 's/:/\t/g'`
 do
