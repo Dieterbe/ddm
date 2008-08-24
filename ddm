@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#changes : the 2 freedesktop standards, config for ddmrc, share for plugins, exaile plugin, 2 ways to name selection so it can be used with user-dirs
 
 # mail proposal 3 met daarin subdirs, environment variable die zegt of we music collection of selection usen
 #practical uses
@@ -14,7 +15,6 @@
 
 # This code is licensed under GPL v3. See http://www.gnu.org/licenses/gpl-3.0.txt
 #TODO: ignore variable that will always be used for ignoring by cp/rsync/svn/..
-#TODO: honor basedir spec 0.6 http://standards.freedesktop.org/basedir-spec/basedir-spec-0.6.html except the 'global' stuff (/usr/share,/etc)
 #TODO: be compatible with xdg userdirectories (may work already, convert ~ and see if it still works) http://www.freedesktop.org/wiki/Software/xdg-user-dirs
 #NOTE: how useful is the 'direct' datatype? do we need to do anything?
 #NOTE: a cache datatype? cache maintained by other program.. not needed in ddm i think
@@ -81,7 +81,8 @@ echo_verbose ()
 {
 	if [ -n "$VERBOSE" ]
 	then
-		echo "$@"
+		#TODO: emits a newline too many when there is a newline at the end of "$@" such as is the case when echo_verbose_buffer is echo'd. to be fixed someday
+		echo -e "$@"
 	fi
 }
 
@@ -434,38 +435,6 @@ slidewindow ()
 
 }
 
-# this function is useful for selection datasets : it gets songs from an exaile database based on a rating
-
-get_exaile ()
-{
-	# need sqlite3
-	db=~/.exaile/music.db
-	if [ ! -r $db ]
-	then
-		echo_die "Cannot find exaile database $db"
-	fi
-	MIN_RATING=${1:-'8'}
-	LIMIT=${2:-1000}
-	if [ $LIMIT -gt 0 ]
-	then
-		LIMIT="LIMIT $LIMIT"
-	else
-		LIMIT=""
-	fi
-		
-	
-	query="SELECT paths.name FROM tracks JOIN paths on tracks.path = paths.id\
-	       WHERE tracks.user_rating != 0\
-	       AND tracks.user_rating != ''\
-	       AND tracks.user_rating >= $MIN_RATING\
-	       ORDER BY tracks.user_rating DESC $LIMIT"
-	       
-	echo_debug "Gonna execute : sqlite3 $db $query"
-	echo_debug "----"
-	wantedfiles=`sqlite3 "$db" "$query"`
-	#TODO : list current files. delete what is not in wantedfiles. get new and keep some
-	#recreate directory structure !
-}
 wrap_rsync ()
 {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
@@ -616,7 +585,6 @@ postupdate ()
  #
 
 #VARS OVERRIDABLE BY USER
-PWD=`pwd`
 
 SVN_BASE=''
 SVN_PREFIX=''
@@ -628,19 +596,35 @@ VFS_SUFFIX=''
 DEFAULT_REPO_TYPE='vfs'
 ALLOWED_REPO_TYPES='vfs svn'
 ALLOWED_DATASET_TYPES='buffer copy direct extension selection'
-DEFAULT_ACTION='update'
+DEFAULT_ACTION='update' #not used
 ALLOWED_ACTIONS='checkout commit update'
 IGNORE_DATASET_REMOTE_SVN=0
-if [ -r ~/.ddm ]
-then
-	source ~/.ddm
-	if [ $? -gt 0 ]
+
+# look for a ddmrc to load according to the XDG basedir spec
+for config_dir in `echo ${XDG_CONFIG_HOME:-$HOME/.config}:${XDG_CONFIG_DIRS:-/etc/xdg} | sed 's/:/\t/g'`
+do
+	config_dir=`echo $config_dir | sed 's#/$##'`
+	if [ -r $config_dir/ddm/ddmrc ]
 	then
-		echo_die 'Problem encountered while loading ~/.ddm'
+		source $config_dir/ddm/ddmrc
+		ddmrc_included='y'
+		if [ $? -gt 0 ]
+		then
+			echo_die "There is a problem with your $config_dir/ddm/ddmrc . probably incorrect syntax"
+		else
+			echo_verbose_buffer="$echo_verbose_buffer Successfully included ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
+		fi
+		break
 	fi
+done
+if [ -z "$ddmrc_included" ]
+then
+	echo_verbose_buffer="$echo_verbose_buffer No ddmrc included.  If you want to override some values, create a ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
 fi
 
 #VARS NOT OVERRIDABLE BY USER
+
+PWD=`pwd`
 
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 XDG_CONFIG_DIRS=${XDG_CONFIG_DIRS:-/etc/xdg}
@@ -720,6 +704,9 @@ do
 	esac
 done
 
+#We now know if we want verbose or not, so we can flush pending output from before we parsed the arguments
+echo_verbose $echo_verbose_buffer
+
 # CHECK NEEDED OPTIONS
 
 if [ -z "$ACTION" ]
@@ -761,6 +748,26 @@ then
 	DATASET_TYPE=$DEFAULT_DATASET_TYPE
 fi
 
+
+# load ddm plugins according to the XDG basedir spec
+for data_dir in `echo ${XDG_DATA_HOME}:${XDG_DATA_DIRS} | sed 's/:/\t/g'`
+do
+	data_dir=`echo $data_dir | sed 's#/$##'`
+	if [ -r $data_dir/ddm/plugins ]
+	then
+		for plugin in $data_dir/ddm/plugins/*.sh
+		do
+			echo_verbose "Plugin   $plugin loading..."
+			source "$plugin"
+			if [ $? -gt 0 ]
+			then
+				echo "Warning: $plugin loading failed"
+			else
+				echo_verbose "Plugin   $plugin loaded"
+			fi
+		done
+	fi
+done
 
 echo_verbose "action $ACTION on dataset name $DATASET_NAME type $DATASET_TYPE"
 
