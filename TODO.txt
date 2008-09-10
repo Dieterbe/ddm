@@ -1,0 +1,27 @@
+0.4
+ * check if commandline switches are good enough. refactor if needed. make good use of getopts bash builtin.
+ * good XDG basedir support
+ * implement basic blob datatype that is rsync --delete -au (for now).
+ * if selection system doesn't work very well, fall back to "rm and copy again" for now. improvements can come later.
+ * doublecheck that directory naming with dataset type suffix is recommended but not necessary (a must for cache datasets)
+ * do i want users to define their own dataset types? probably not? then i probably dont want them to invent actions either?
+ * users can unset actions if they dont like them right? with unset. this is good?
+ * implement backup action for extension
+ * make sure ddm behaves like docs say, or edit docs.
+ * write Changelog
+
+Someday:
+ * port to ... php? python?
+ * generic, inheritable functions to find "consumed" files (based on bash history, media player recent files file, ...). 
+ * improve blob dataset type to not just rsync but make space efficient snapshots (and you must be able to choose a specific snapshot)
+   Options (must still be reviewed and decided) :
+   - git           git has a pretty efficient storage system, although it doesn't store owner/group, permissions, xattrs etc
+     could help:
+     * metastore     http://david.hardeman.nu/software.php#metastore
+     * gibak         http://eigenclass.org/hiki/gibak-backup-system-introduction
+   - fsvs          http://fsvs.tigris.org/
+   - svk           http://svk.bestpractical.com/view/HomePage
+   - scord         http://scord.sourceforge.net/
+   - rsync wrapper http://www.mikerubel.org/computers/rsync_snapshots/ http://www.sanitarium.net/golug/rsync_backups.html
+   - rsnapshot     http://rsnapshot.org/
+   - rdiff-backup  http://www.nongnu.org/rdiff-backup/
