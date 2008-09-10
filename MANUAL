@@ -1,0 +1,135 @@
+# 
+# THIS DOCUMENTATION IS A PREVIEW.  DDM DOES NOT YET WORK LIKE THIS.
+#
+
+1) Introduction
+DDM is a simple tool that helps you manage your data, distributed over multiple
+(*nix) systems.  It must be seen in a bigger context of file organisation,
+meta-data, version control and backup strategies.
+The main point is that different sets of data can have different requirements.
+
+You probably have multiple sets of data (e.g.: music, images, documents, movies,
+sofware projects, ...) that you use/store on more then one system for a variety of reasons
+(backups, centralized management, having access to your data from several
+places, collaboration, ...).  You probably also have specific 'rules' on how you use these
+sets of data on your systems.
+Some examples:
+* You have a series of TV episodes on your fileserver and you want the latest 5 that you haven't watched yet available on your laptop.
+* You have a giant music collection on your fileserver.  You want your favorite music (based on statistics from your media player) available on your laptop. 
+  Also, sometimes you rip (your own) cd's which must be properly tagged first and then added to your collection and stored on your mobile media player.
+* After capturing new images with a digital camera you put them on your laptop first but you like to sync them to your file server frequently. 
+  You don't need all the high-res images stored on your laptop.  They consume too much space, and you think syncing them to your server is a great backup.
+  On the other hand you also want *some* of your high-res images (stored on the server) available for editing on the
+  laptop, separating edited images from their originals through whatever medium seems most appropriate (version control, separate directories, or a
+  feature of your image editor)
+  You might have the same images in a smaller format on your server (for gallery programs etc.) and want these (or a select few albums of them) available on the road
+  also, clearly separated from the high-res ones of course.
+
+If you starting thinking about it, you probably realize that you have some similar examples yourself. 
+And maybe you'll even notice that your current way of managing everything could be improved.
+
+You can try managing everything by hand using rsync/(s)cp/svn/git/... but it limits
+your ability to actually use your data the way you want it.  
+The more different types of data you have and the more you (want to) have specific
+work flows the harder it becomes to keep your data up to date, consistent
+and organized in a flexible way on your boxes.  Especially a home directory can become a mess if not tightly managed
+and controlled.
+
+This is where DDM comes in.
+It's goal is to let you come up with specific work flows and usage patterns for your data.
+You tell ddm what tools to use ( rsync/(s)cp/svn/git/rm/... ) and how to use them, making managing your data much more peaceful and
+powerfull.  DDM is the Distributed Data Manager.
+
+
+2) Disclaimer
+
+The code is far from finished. Some features are still missing and there will be bugs in it.
+Even the concepts themselves are still in evolution.
+Don't blame the author if ddm deletes the wrong files or causes your computer to blow up.
+
+
+3) Concepts
+
+These are the basic concepts.  They will be explained in the following chapters.
+
+ * repositories: A DDM repository is like a version control repository but in a broader sense.
+   - repo tye: A repository has a specific type. (eg. 'svn' or 'vfs')
+   - repo name: The name of the repository (eg. 'pictures')
+ * datasets: this is a directory on a system that corresponds to some repository.
+   - dataset name: The name of a dataset. (eg. 'pictures')
+   - dataset type: How the dataset relates to it's corresponding repository. ( eg. 'selection')
+ * actions: what to do with a dataset? (eg 'update')
+    * action: commit, update, checkout
+
+
+4) Repositories
+A repository is a data store (on your 'server') 
+It must have the 'perfect layout' and contain your files just the way you want them (eg songs properly tagged, files tightly organized etc)
+They must be kept clean.  If you are 'working' in them, you're doing it wrong.
+ * repo type: The type of the repository. Currently there are 2 supported repository types:
+   - svn: a normal subversion repository
+   - vfs: a directory somewhere in the vfs hierarchy.  Any position in your VFS will do, and how it gets there is entirely up to you.
+     (mounted directly, mounted nfs export, sshfs, autoFS, ... )  
+ * repo name: A clear, no-nonsense, and preferably unique (in your 'world'. eg over all your ddm repositories) name
+
+
+5) Datasets
+This is a directory on a system that is related in some way to a repository.
+This goes way beyond what a "working copy" in VCS lingo is to a repository.
+ * dataset name: the name of the dataset (directory) on your system.
+   In theory this can be anything you want, but the recommended method is
+   using the repository name and suffixing it with a hyphen and the dataset
+   type. (eg 'pictures-selection')
+ * dataset type: a dataset's type specifies how the dataset relates to it's
+   repository.
+   - selection: a copy of a subset of the data in the repo
+     (eg: your favourite movies of all your movies)
+   - buffer: staging area for a specific kind of data.  It's a temporary storage
+     with the only goal of keeping your data until you flush it to the repository.
+     (eg: new images)
+   - copy: a copy of all content in the repo (an svn working copy or a directory using rsync)
+   - extension: contains unique content that you don't want in your
+     corresponding repository. This content will never be pushed to the corresponding repository (so the only
+     'relation' to the corresponding repository is the name/type of media, not the data itself).
+     However, for backup purposes, this content *can* be backed up to a
+     repository with the suffix '-extension'.  So this dataset type can also
+     be considered a copy dataset for the repository 'foo-extension' where 'foo' can be freely
+     choosen. 
+   - cache: contains tempory data that you don't want in any repository. 
+     This dataset is supposed to be maintained by programs, not by users. 
+     If you feel like using a cache dataset manually, just go for the extension (and
+     don't back it up)
+   - blob:  some data that is of value, but binary and/or hard to grasp for humans.
+     The goal in the future is to make snapshots on points in time,
+     but for now a simple rsync needs to suffice.
+     (for now the implementation is similar to a copy dataset but this will change)
+     The main goal for this is usually just backups.  (eg mysql database)  
+   - direct: a (symlink to a) path on a remote location. (usually an nfs mount or subdirectory thereof)
+     useful for quick access to big collections when physically possible.
+
+Any (optional) configuration settings or custom actions can be specified in a file '.ddm' in the dataset.
+This file will be sourced by bash.
+This is not needed and sometimes even not possible (eg direct dataset for an unmounted filesystem)  
+If no dataset type can be found in the configuration, or parsed from the
+dataset name, then the dataset will be assumed to be of the type 'copy' by
+default.
+
+
+6) Actions
+The action specifies an operation to be performed on a dataset.  Usually the
+action interacts with the corresponding repository, but this does not always
+need to be the case.  You can inject whatever commands in actions.  (this
+can be useful for example for the update action on a buffer)
+Some action names are bound to a specific dataset type, but you can create your own
+actions, override and even unset defaults.
+Not all actions have to be defined for all dataset types.
+
+These are the default actions and to which corresponding repositories they apply by default:
+ * commit:   commit the state/changes of the dataset to the repository ( buffer (alias for flush by default), copy, blob)
+ * update:   update the files in the dataset ( selection, copy, blob, direct*)
+ * checkout: set up the dataset ( selection, copy, blob, direct*)
+ * flush:    empty dataset and forward to repository if applicable ( buffer, cache, extension )
+ * backup:   backs up the state of the dataset (alias for commit for all datasets, also works for extensions )
+ * restore:  restore the state of the dataset (alias for update for all datasets)
+
+(*) : usually just mounts the corresponding filesystem
