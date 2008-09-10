@@ -99,9 +99,10 @@ This goes way beyond what a "working copy" in VCS lingo is to a repository.
      This dataset is supposed to be maintained by programs, not by users. 
      If you feel like using a cache dataset manually, just go for the extension (and
      don't back it up)
-   - blob:  some data that is of value, but binary and/or hard to grasp for humans.
+   - blob: data that is binary and/or hard to grasp for humans, doesn't need tight, fine-grained version control
+     and has enough with snapshots at specific points in time of the whole dataset.
      The goal in the future is to make snapshots on points in time,
-     but for now a simple rsync needs to suffice.
+     but for now a simple rsync should to suffice.
      (for now the implementation is similar to a copy dataset but this will change)
      The main goal for this is usually just backups.  (eg mysql database)  
    - direct: a (symlink to a) path on a remote location. (usually an nfs mount or subdirectory thereof)
