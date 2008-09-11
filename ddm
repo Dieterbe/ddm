@@ -1,18 +1,14 @@
 #!/bin/bash
 
-#changes : the 2 freedesktop standards, config for ddmrc, share for plugins, exaile plugin, 2 ways to name selection so it can be used with user-dirs
+VERSION='0.4b'
 
-# ddm v0.4b
+# DDM
+# See included documentation
+
 # Written by Dieter Plaetinck
 # http://dieter.plaetinck.be
+# http://github.com/Dieterbe/ddm
 # This code is licensed under GPL v3. See http://www.gnu.org/licenses/gpl-3.0.txt
-
-#TODO: ignore variable that will always be used for ignoring by cp/rsync/svn/..
-#TODO: be compatible with xdg userdirectories (may work already, convert ~ and see if it still works) http://www.freedesktop.org/wiki/Software/xdg-user-dirs
-
-#NOTE: how useful is the 'direct' datatype? do we need to do anything?
-#NOTE: a cache datatype? cache maintained by other program.. not needed in ddm i think
-#NOTE: need to think about if it would be useful to have datasets that are multiple dataset types for different repos
 
 # basedir spec notes
 # If, when attempting to write a file, the destination dir not exist try to create as 0700. If the exists dont change perms
@@ -31,12 +27,13 @@
 usage()
 {
 cat << EOF
+This is ddm $VERSION
 usage: `basename $0` -a <action> [more options]
        `basename $0` -h
 
 OPTIONS:
    -a <action>         Action         $ACTION_HELPSTRING
-   -d <dataset>        Dataset        $DATASET_HELPSTRING
+   -d <dataset-name>   Dataset name   $DATASET_NAME_HELPSTRING
    -t <dataset-type>   Dataset type   $DATASET_TYPE_HELPSTRING
    -r <repo-type>      Repo type      $REPO_TYPE_HELPSTRING
    -m <message>        Message        $MESSAGE_HELPSTRING
@@ -50,25 +47,21 @@ ask_user ()
 	# $1 : question to ask
 	# $2 : 1 for yes/no question, just check if  $user_response='y' afterwards
 	
-	if [ -n "$1" ]
-	then
-		if [ "$2" == '1' ]
-		then
-			echo "$1 (y/n)"
-		else
-			echo "$1"
-		fi
-	fi
-		
-	read user_response
+	user_response= # this variable will be read by the caller.
+
+	[ -n "$1" ] && echo_die "ask_user called without question to ask" 100
 	
 	if [ "$2" == '1' ]
 	then
-		if [ "$user_response" == 'Y' ]
-		then
-			user_response='y'
-		fi
+		echo "$1 (y/n)"
+	else
+		echo "$1"
 	fi
+		
+	read user_response
+	user_response=`tr "[:upper:]" "[:lower:]" <<< $user_response`
+	
+	[ "$2" == '1' ] && [ "$user_response" == 'y' -o "$user_response" == 'yes' ] && user_response='y'
 }
 
 echo_verbose ()
@@ -83,16 +76,20 @@ echo_verbose ()
 
 echo_debug ()
 {
-	if [ "$DEBUG" == "1" ]
+	if [ "$DEBUG" == "1" ] #export this variable or set it through ddmrc.
 	then
 		echo "DEBUG: $@"
 	fi
+	
+	return 0
 }
 
 echo_die ()
 {
-	echo "$@" >&2
-	exit 2
+	echo "$1" >&2
+	[ -n "$2" ] && exit $2
+	echo "No exit code set when calling echo_die"
+	exit 100
 }
 
 check_is_in()
@@ -100,6 +97,7 @@ check_is_in()
 	test=${1:-unknown}
 	allowed=${2:-unknown}
 	type=${3:-unknown}
+	exitcode=${4:-100}
 	
 	found=0
 	
@@ -113,36 +111,37 @@ check_is_in()
 	
 	if [ $found -eq 0 ]
 	then
-		echo_die "$test is not an allowed/known $type (allowed: $allowed)"
+		echo_die "$test is not an allowed/known $type (allowed: $allowed)" $exitcode
 	fi
 }
 
 check_writable_dir ()
 {
- #optional arg2 : type of dir (str)
-	if [ -n "$1" ]
-	then
-		path="$1"
-	else
-		path=`pwd`
-	fi
+
+	[ -z "$1" -o -z "$2" ] && echo_debug "No path or type given when calling check_writable_dir" && exit 100
+
+	path="$1"
+	type="$2"
+	exitcode=${3:-100}
 	
 	if [ ! -d "$path" ]
 	then
-		echo_die "$2 $path does not exist or is not a directory"
+		echo_die "$2 $path does not exist or is not a directory" $exitcode
 	elif [ ! -r "$path" ]
 	then
-		echo_die "$2 $path is an existing directory, but is not readable"
+		echo_die "$2 $path is an existing directory, but is not readable" $exitcode
 	elif [ ! -x "$path" ] # not sure if this is really needed...
 	then
-		echo_die "$2 $path is a readable directory, but not executable"
+		echo_die "$2 $path is a readable directory, but not executable" $exitcode
 	fi
 }
 
-check_remote_path ()
+check_repo_path ()
 {
+	[ -z "$1" -o -z "$2" ] && echo_debug "no path or repotype given when calling check_repo_path" && exit 100
 	path=$1
 	repotype=$2
+	exitcode=3
 	
 	if [ "$repotype" == 'svn' ]
 	then
@@ -152,19 +151,21 @@ check_remote_path ()
 			if [ $? -gt 0 ]
 			then
 				echo "Something appears to be wrong with the $repotype repo $path :"
-				echo_die "$output"
+				echo_die "$output" $exitcode
 			fi
 		fi
 	elif [ "$repotype" == 'vfs' ]
 	then
-		check_writable_dir "$path" "$repotype repo" 
+		check_writable_dir "$path" "$repotype repo" $exitcode
 	fi
 }
 
-check_local_path ()
+check_dataset_path ()
 {
+	[ -z "$1" -o -z "$2" ] && echo_debug "no path or repotype given when calling check_dataset_path" && exit 100
 	path=$1
 	repotype=$2
+	exitcode=2
 	
 	if [ "$repotype" == 'svn' ]
 	then
@@ -172,7 +173,7 @@ check_local_path ()
 		if [ $? -gt 0 ]
 		then
 			echo "Something appears to be wrong with the $repotype dataset $path :"
-			echo_die "$output"
+			echo_die "$output" $exitcode
 		fi
 
 		if [ "$IGNORE_DATASET_REMOTE_SVN" -eq 0 ]
@@ -187,7 +188,7 @@ check_local_path ()
 		fi
 	elif [ "$repotype" == 'vfs' ]
 	then
-		check_writable_dir "$path" "$repotype dataset"
+		check_writable_dir "$path" "$repotype dataset" $exitcode
 	fi
 }
 
@@ -208,13 +209,13 @@ set_dataset_info()
 		DATASET_LOCAL=$PWD
 	elif [ "$DATASET_DIR_NAME_REL" == '..' ]
 	then
-		DATASET_LOCAL=`echo $PWD | xargs dirname`
+		DATASET_LOCAL=`xargs dirname <<< $PWD`
 	else
 		#remove trailing /, if any
-		DATASET_DIR_NAME_REL=`echo $DATASET_DIR_NAME_REL | sed 's#/$##'`
+		DATASET_DIR_NAME_REL=`sed 's#/$##' <<< $DATASET_DIR_NAME_REL`
 	
 		#prepend path, if needed
-		if [ `echo $DATASET_DIR_NAME_REL | grep '/' | wc -l` -eq 0 ]
+		if ! grep '/' <<< $DATASET_DIR_NAME_REL > /dev/null
 		then
 			if [ $PWD != '/' ]
 			then
@@ -225,10 +226,10 @@ set_dataset_info()
 		fi
 	fi
 
-	DATASET_DIR_NAME=`echo $DATASET_LOCAL    | xargs basename`
-	DATASET_PATH=`    echo $DATASET_LOCAL    | xargs dirname`
-	DATASET_NAME=`    echo $DATASET_DIR_NAME | sed 's/-[^-]*$//'`
-	[ $ACTION != checkout ] && DATASET_TYPE=`    echo $DATASET_DIR_NAME | sed 's/.*-//'`
+	DATASET_DIR_NAME=`xargs basename <<< $DATASET_LOCAL`
+	DATASET_PATH=`    xargs dirname <<< $DATASET_LOCAL`
+	DATASET_NAME=`    sed 's/-[^-]*$//' <<< $DATASET_DIR_NAME`
+	[ $ACTION != checkout ] && DATASET_TYPE=`   sed 's/.*-//' <<< $DATASET_DIR_NAME `
 	[ $ACTION != checkout ] && [ "$DATASET_TYPE" == "$DATASET_DIR_NAME" ] && DATASET_TYPE=$DEFAULT_DATASET_TYPE
 	[ "$REPO_TYPE" == 'svn' ] && DATASET_REMOTE=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_NAME}${SVN_SUFFIX}"
 	[ "$REPO_TYPE" == 'vfs' ] && DATASET_REMOTE=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_NAME}${VFS_SUFFIX}"
@@ -361,7 +362,7 @@ wrap_rsync ()
 {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
 	then
-		echo_die 'internal error: insufficient parameters to rsync wrapper'
+		echo_die 'internal error: insufficient parameters to rsync wrapper' 100
 	fi
 	if [ "$5" == '1' ]
 	then
@@ -544,6 +545,7 @@ ALLOWED_ACTIONS='checkout commit update'
 IGNORE_DATASET_REMOTE_SVN=0
 
 # look for a ddmrc to load according to the XDG basedir spec
+PWD_BEFORE=`pwd`
 for config_dir in `echo ${XDG_CONFIG_HOME:-$HOME/.config}:${XDG_CONFIG_DIRS:-/etc/xdg} | sed 's/:/\t/g'`
 do
 	config_dir=`echo $config_dir | sed 's#/$##'`
@@ -553,7 +555,7 @@ do
 		ddmrc_included='y'
 		if [ $? -gt 0 ]
 		then
-			echo_die "There is a problem with your $config_dir/ddm/ddmrc . probably incorrect syntax"
+			echo_die "There is a problem with your $config_dir/ddm/ddmrc . probably incorrect syntax" 1
 		else
 			echo_verbose_buffer="${echo_verbose_buffer}Successfully included ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
 		fi
@@ -563,11 +565,13 @@ done
 if [ -z "$ddmrc_included" ]
 then
 	echo_verbose_buffer="${echo_verbose_buffer}No ddmrc included.  If you want to override some values, create a ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
+else
+	PWD_AFTER=`pwd`
+	[ "$PWD_AFTER" != "$PWD_BEFORE" ] && echo_die "Please don't cd in your ddmrc scripts.  PWD must remain the same!" 1
 fi
 
 #VARS NOT OVERRIDABLE BY USER
-
-PWD=`pwd`
+PWD=PWD_BEFORE
 
 DEFAULT_DATASET_TYPE='copy' # i dont think this should be changed by the user
 ACTION_HELPSTRING="(one of: $ALLOWED_ACTIONS)"
@@ -576,10 +580,9 @@ DATASET_TYPE_HELPSTRING="(one of: $ALLOWED_DATASET_TYPES, default is $DEFAULT_DA
 REPO_TYPE_HELPSTRING="(one of: $ALLOWED_REPO_TYPES, default is $DEFAULT_REPO_TYPE)"
 MESSAGE_HELPSTRING="(used for commits in svn, ignored otherwise)"
 	
-check_is_in "$DEFAULT_REPO_TYPE" "$ALLOWED_REPO_TYPES" 'repo type'
+check_is_in "$DEFAULT_REPO_TYPE" "$ALLOWED_REPO_TYPES" 'repo type' 3
 
 
-#ACTION=$DEFAULT_ACTION #Do not automatically set action. we want the user to explicitly pass -a <action> to prevent lots of stuff from happening by just executing ddm without args
 DATASET_DIR_NAME_REL=''
 DATASET_TYPE=$DEFAULT_DATASET_TYPE
 REPO_TYPE=$DEFAULT_REPO_TYPE
@@ -591,38 +594,38 @@ do
 	a)
 		if [ -z "$OPTARG" ]
 		then
-			echo_die "To use -a, specify an action as argument.  $ACTION_HELPSTRING"
+			echo_die "To use -a, specify an action as argument.  $ACTION_HELPSTRING" 5
 		fi
-		check_is_in "$OPTARG" "$ALLOWED_ACTIONS" action
+		#check_is_in "$OPTARG" "$ALLOWED_ACTIONS" action 4 #TODO : will be allow custom actions or not? probably not.. mss user ALLOWED_ACTIONS laten definen in ddmrc
 		ACTION=$OPTARG
 		;;
 	d)
 		if [ -z "$OPTARG" ]
 		then
-			echo_die "To use -d, specify a dataset as argument.  $DATASET_HELPSTRING"
+			echo_die "To use -d, specify a dataset as argument.  $DATASET_HELPSTRING" 5
 		fi
 		DATASET_DIR_NAME_REL=$OPTARG
 		;;
 	t)
 		if [ -z "$OPTARG" ]
 		then
-			echo_die "To use -t, specify a dataset-type as argument.  $DATASET_TYPE_HELPSTRING"
+			echo_die "To use -t, specify a dataset-type as argument.  $DATASET_TYPE_HELPSTRING" 5
 		fi
-		check_is_in "$OPTARG" "$ALLOWED_DATASET_TYPES" 'dataset type'
+		check_is_in "$OPTARG" "$ALLOWED_DATASET_TYPES" 'dataset type' 2
 		DATASET_TYPE=$OPTARG
 		;;
 	r)
 		if [ -z "$OPTARG" ]
 		then
-			echo_die "To use -r, specify a repo-type as argument.  $REPO_TYPE_HELPSTRING"
+			echo_die "To use -r, specify a repo-type as argument.  $REPO_TYPE_HELPSTRING" 5
 		fi
-		check_is_in "$OPTARG" "$ALLOWED_REPO_TYPES" 'repo type'
+		check_is_in "$OPTARG" "$ALLOWED_REPO_TYPES" 'repo type' 3
 		REPO_TYPE=$OPTARG
 		;;
 	m)
 		if [ -z "$OPTARG" ]
 		then
-			echo_die "To use -m, specify a message as argument.  $MESSAGE_HELPSTRING"
+			echo_die "To use -m, specify a message as argument.  $MESSAGE_HELPSTRING" 5
 		fi
 		MSG=$OPTARG
 		;;
@@ -635,7 +638,7 @@ do
 		;;
 	?)
 		usage
-		exit 1
+		exit 5
 		;;
 	esac
 done
@@ -644,11 +647,12 @@ done
 echo_verbose $echo_verbose_buffer
 
 # CHECK NEEDED OPTIONS
-
+# If no action is specified, calling ddm is useless.
 if [ -z "$ACTION" ]
 then
-	echo_die "You must specify an action with -a <action>.  $ACTION_HELPSTRING"
+       echo_die "You must specify an action with -a <action>.  $ACTION_HELPSTRING" 4
 fi
+
 
 set_dataset_info
 
@@ -659,19 +663,22 @@ then
 	source $DATASET_LOCAL/.ddm
 	if [ $? -ne 0 ]
 	then
-		echo_die "Error: invalid $DATASET_LOCAL/.ddm"
+		echo_die "Error: invalid $DATASET_LOCAL/.ddm" 2
 	else
-		echo_verbose "Included $DATASET_LOCAL/.ddm"
+		echo_verbose "Included $DATASET_LOCAL/.ddm" 
 	fi
 fi
+PWD_AFTER=`pwd`
+[ "$PWD_AFTER" != "$PWD" ] && echo_die "Please don't cd in your .ddm scripts.  PWD must remain the same!" 2   
+        
 
-check_remote_path "$DATASET_REMOTE" "$REPO_TYPE"
+check_repo_path "$DATASET_REMOTE" "repository $REPO_TYPE"
 
 if [ "$ACTION" != checkout ]
 then
-	check_local_path "$DATASET_LOCAL" "$REPO_TYPE"
+	check_dataset_path "$DATASET_LOCAL" "repository $REPO_TYPE"
 else
-	check_writable_dir `dirname "$DATASET_LOCAL"` "parent dir for $REPO_TYPE dataset"
+	check_writable_dir `dirname "$DATASET_LOCAL"` "parent dir for $REPO_TYPE dataset" 2
 fi	
 
 echo_verbose "action $ACTION on dataset name $DATASET_NAME type $DATASET_TYPE"

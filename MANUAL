@@ -134,3 +134,16 @@ These are the default actions and to which corresponding repositories they apply
  * restore:  restore the state of the dataset (alias for update for all datasets)
 
 (*) : usually just mounts the corresponding filesystem
+
+Note that the ddm command-line tool performs the above described actions on datasets.
+These actions generally either manipulate or create datasets, or update
+repositories.  Deleting datasets and setting up/managing/deleting repositories are to be done manually.
+
+7) Exit codes
+ 0 All OK
+ 1 Something wrong with ddmrc
+ 2 Something wrong with dataset
+ 3 Something wrong with repository
+ 4 Something wrong with action
+ 5 Something wrong while parsing arguments
+ 100 Internal problem / undefined exitcode
