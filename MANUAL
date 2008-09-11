@@ -85,12 +85,23 @@ This goes way beyond what a "working copy" in VCS lingo is to a repository.
    type. (eg 'pictures-selection')
  * dataset type: a dataset's type specifies how the dataset relates to it's
    repository.
-   - selection: a copy of a subset of the data in the repo
-     (eg: your favourite movies of all your movies)
+   Note that not all datasets are defined for all repository types (eg direct for svn repository)
+   - blob: data that is binary and/or hard to grasp for humans, doesn't need tight, fine-grained version control
+     and has enough with snapshots at specific points in time of the whole dataset.
+     The goal in the future is to make snapshots on points in time,
+     but for now a simple rsync should to suffice.
+     (for now the implementation is similar to a copy dataset but this will change)
+     The main goal for this is usually just backups.  (eg mysql database)  
    - buffer: staging area for a specific kind of data.  It's a temporary storage
      with the only goal of keeping your data until you flush it to the repository.
      (eg: new images)
+   - cache: contains tempory data that you don't want in any repository. 
+     This dataset is supposed to be maintained by programs, not by users. 
+     If you feel like using a cache dataset manually, just go for the extension (and
+     don't back it up)
    - copy: a copy of all content in the repo (an svn working copy or a directory using rsync)
+   - direct: a (symlink to a) path on a remote location. (usually an nfs mount or subdirectory thereof)
+     useful for quick access to big collections when physically possible.
    - extension: contains unique content that you don't want in your
      corresponding repository. This content will never be pushed to the corresponding repository (so the only
      'relation' to the corresponding repository is the name/type of media, not the data itself).
@@ -98,18 +109,8 @@ This goes way beyond what a "working copy" in VCS lingo is to a repository.
      repository with the suffix '-extension'.  So this dataset type can also
      be considered a copy dataset for the repository 'foo-extension' where 'foo' can be freely
      choosen. 
-   - cache: contains tempory data that you don't want in any repository. 
-     This dataset is supposed to be maintained by programs, not by users. 
-     If you feel like using a cache dataset manually, just go for the extension (and
-     don't back it up)
-   - blob: data that is binary and/or hard to grasp for humans, doesn't need tight, fine-grained version control
-     and has enough with snapshots at specific points in time of the whole dataset.
-     The goal in the future is to make snapshots on points in time,
-     but for now a simple rsync should to suffice.
-     (for now the implementation is similar to a copy dataset but this will change)
-     The main goal for this is usually just backups.  (eg mysql database)  
-   - direct: a (symlink to a) path on a remote location. (usually an nfs mount or subdirectory thereof)
-     useful for quick access to big collections when physically possible.
+   - selection: a copy of a subset of the data in the repo
+     (eg: your favourite movies of all your movies)
  * configuration: any (optional) configuration settings or custom actions can be specified in a file '.ddm' in the dataset.
    This file will be sourced by bash.
    This is not needed and sometimes even not possible (eg direct dataset for an unmounted filesystem)  
@@ -145,12 +146,12 @@ actions, override and even unset defaults.
 Not all actions have to be defined for all dataset types.
 
 These are the default actions and to which corresponding repositories they apply by default:
- * commit:   commit the state/changes of the dataset to the repository ( buffer (alias for flush by default), copy, blob)
- * update:   update the files in the dataset ( selection, copy, blob, direct*)
- * checkout: set up the dataset ( selection, copy, blob, direct*)
- * flush:    empty dataset and forward to repository if applicable ( buffer, cache, extension )
  * backup:   backs up the state of the dataset (alias for commit for all datasets, also works for extensions )
+ * checkout: set up the dataset ( selection, copy, blob, direct*)
+ * commit:   commit the state/changes of the dataset to the repository ( buffer (alias for flush by default), copy, blob)
+ * flush:    empty dataset and forward to repository if applicable ( buffer, cache, extension )
  * restore:  restore the state of the dataset (alias for update for all datasets)
+ * update:   update the files in the dataset ( selection, copy, blob, direct*)
 
 (*) : usually just mounts the corresponding filesystem
 
@@ -164,15 +165,18 @@ repositories.  Deleting datasets and setting up/managing/deleting repositories a
  Global configuration is done in the file ddmrc, which is to be placed in a 'ddm' subdirectory of the appropriate XDG basedir.
  By default this means $HOME/.config/ddm/ddmrc ( see http://standards.freedesktop.org/basedir-spec/basedir-spec-0.6.html )
  These are the variables that can be specified, along with their default configuration:
- SVN_BASE=''
- SVN_PREFIX=''
- SVN_SUFFIX=''
- VFS_BASE=''
- VFS_PREFIX=''
- VFS_SUFFIX=''
- ALLOWED_REPO_TYPES='vfs'
- DEFAULT_REPO_TYPE='vfs'
- IGNORE_DATASET_REMOTE_SVN=0 #nag if the repo url figured out is not the same as the one in 'svn info'. you should leave this 0
+   DEBUG='' #set to 1 for debugging
+   SVN_BASE=''
+   SVN_PREFIX=''
+   SVN_SUFFIX=''
+   VFS_BASE=''
+   VFS_PREFIX=''
+   VFS_SUFFIX=''
+   ALLOWED_REPO_TYPES='svn vfs'
+   DEFAULT_REPO_TYPE='vfs'
+   IGNORE_DATASET_REMOTE_SVN=0 #nag if the repo url figured out is not the same as the one in 'svn info'. you should leave this 0
+   ALLOWED_DATASET_TYPES='blob buffer cache copy direct extension selection'
+   ALLOWED_ACTIONS='backup checkout commit flush restore update'
 
  Unless overridden, ddm will construct the repo path as follows: $TYPE_BASE/$TYPE_PREFIX$DATASET_NAME$TYPE_SUFFIX
 
