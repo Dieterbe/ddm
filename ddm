@@ -179,10 +179,10 @@ check_dataset_path ()
 		if [ "$IGNORE_DATASET_REMOTE_SVN" -eq 0 ]
 		then
 			remote=`echo "$output" | grep 'URL: ' | awk '{print $2}'`
-			if [ "$remote" != "$DATASET_REMOTE" ]
+			if [ "$remote" != "$DATASET_REMOTE_FULL" ]
 			then
 				echo "Mismatch between remote svn paths:"
-				echo ".ddm : $DATASET_REMOTE"
+				echo ".ddm : $DATASET_REMOTE_FULL"
 				echo "local svn info : $remote"
 			fi
 		fi
@@ -195,44 +195,45 @@ check_dataset_path ()
 
 set_dataset_info()
 {
-	# here we set all the variables, based on what DATASET_DIR_NAME_REL (given by user) & PWD are
-	# DATASET_LOCAL=''      # full path to dataset locally (including type suffix if any)
-	# DATASET_REMOTE=''     # full path to dataset remotely (or locally if network mount)
-	# DATASET_PATH=''       # just the path (until parent directory of dataset) ( aka dirname )
-	# DATASET_DIR_NAME_REL  # identifier to dataset, taken against pwd ( could be '.','..', nothing at all, dirname, full path, ..) 
-	# DATASET_DIR_NAME=''   # like $DATASET_LOCAL but no path ( aka basename) 
-	# DATASET_NAME=''       # like $DATASET_DIR_NAME but no type suffix
-	# DATASET_TYPE=''       # buffer,copy,extensions etc
+	# here we set all the variables, based on what DATASET_LOCAL_REL (given by user) & PWD are
+	# DATASET_LOCAL_REL             # identifier to dataset, taken against pwd ( could be '.','..', nothing at all, dirname, full path, ..) 
 
-	if [ -z "$DATASET_DIR_NAME_REL" ] || [ "$DATASET_DIR_NAME_REL" == '.' ]
+	# DATASET_REMOTE_FULL=''        # full path to dataset remotely (or locally if network mount)
+	# DATASET_LOCAL_FULL=''         # full path to dataset locally (including type suffix if any)
+	# DATASET_LOCAL_PARENT_FULL=''  # the path of the parent directory of dataset ( aka dirname )
+	# DATASET_LOCAL_BASE=''         # like $DATASET_LOCAL_FULL but no path ( aka basename) 
+	# DATASET_LOCAL_NAME=''         # like $DATASET_LOCAL_BASE but no type suffix
+	# DATASET_TYPE=''               # buffer,copy,extensions etc
+
+	if [ -z "$DATASET_LOCAL_REL" ] || [ "$DATASET_LOCAL_REL" == '.' ]
 	then
-		DATASET_LOCAL=$PWD
-	elif [ "$DATASET_DIR_NAME_REL" == '..' ]
+		DATASET_LOCAL_FULL=$PWD
+	elif [ "$DATASET_LOCAL_REL" == '..' ]
 	then
-		DATASET_LOCAL=`xargs dirname <<< $PWD`
+		DATASET_LOCAL_FULL=`dirname $PWD`
 	else
 		#remove trailing /, if any
-		DATASET_DIR_NAME_REL=`sed 's#/$##' <<< $DATASET_DIR_NAME_REL`
+		DATASET_LOCAL_REL=`sed 's#/$##' <<< $DATASET_LOCAL_REL`
 	
 		#prepend path, if needed
-		if ! grep '/' <<< $DATASET_DIR_NAME_REL > /dev/null
+		if ! grep '/' <<< $DATASET_LOCAL_REL > /dev/null
 		then
 			if [ $PWD != '/' ]
 			then
-				DATASET_LOCAL="$PWD/$DATASET_DIR_NAME_REL"
+				DATASET_LOCAL_FULL="$PWD/$DATASET_LOCAL_REL"
 			else
-				DATASET_LOCAL="/$DATASET_DIR_NAME_REL"
+				DATASET_LOCAL_FULL="/$DATASET_LOCAL_REL"
 			fi
 		fi
 	fi
 
-	DATASET_DIR_NAME=`xargs basename <<< $DATASET_LOCAL`
-	DATASET_PATH=`    xargs dirname <<< $DATASET_LOCAL`
-	DATASET_NAME=`    sed 's/-[^-]*$//' <<< $DATASET_DIR_NAME`
-	[ $ACTION != checkout ] && DATASET_TYPE=`   sed 's/.*-//' <<< $DATASET_DIR_NAME `
-	[ $ACTION != checkout ] && [ "$DATASET_TYPE" == "$DATASET_DIR_NAME" ] && DATASET_TYPE=$DEFAULT_DATASET_TYPE
-	[ "$REPO_TYPE" == 'svn' ] && DATASET_REMOTE=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_NAME}${SVN_SUFFIX}"
-	[ "$REPO_TYPE" == 'vfs' ] && DATASET_REMOTE=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_NAME}${VFS_SUFFIX}"
+	DATASET_LOCAL_BASE=`basename $DATASET_LOCAL_FULL`
+	DATASET_LOCAL_PARENT_FULL=`    dirname $DATASET_LOCAL_FULL`
+	DATASET_LOCAL_NAME=`    sed 's/-[^-]*$//' <<< $DATASET_LOCAL_BASE`
+	[ $ACTION != checkout ] && DATASET_TYPE=`   sed 's/.*-//' <<< $DATASET_LOCAL_BASE `
+	[ $ACTION != checkout ] && [ "$DATASET_TYPE" == "$DATASET_LOCAL_BASE" ] && DATASET_TYPE=$DEFAULT_DATASET_TYPE
+	[ "$REPO_TYPE" == 'svn' ] && DATASET_REMOTE_FULL=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_LOCAL_NAME}${SVN_SUFFIX}"
+	[ "$REPO_TYPE" == 'vfs' ] && DATASET_REMOTE_FULL=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_LOCAL_NAME}${VFS_SUFFIX}"
 }
 
 
@@ -256,9 +257,9 @@ deletefiles ()
 		then
                         file=`echo $file | xargs echo` #remove escape characters.. dont know if this is the best way
 			#file=`basename $file` #deprecated : lets make it the responsability of the caller to decide what he wants to delete
-                        if [ `pwd` != "$DATASET_LOCAL" ]
+                        if [ `pwd` != "$DATASET_LOCAL_FULL" ]
                         then
-                        	file="$DATASET_LOCAL/$file"
+                        	file="$DATASET_LOCAL_FULL/$file"
                         fi
                         
 			echo_verbose -n " * $file... "
@@ -292,9 +293,9 @@ keepfiles ()
         do
         	file=`echo "$file" | xargs echo` # -0 fixes quotes but keeps escapes :(
         	file=`basename $file`
-		if [ `pwd` != "$DATASET_LOCAL" ]
+		if [ `pwd` != "$DATASET_LOCAL_FULL" ]
 		then
-			file="$DATASET_LOCAL/$file"
+			file="$DATASET_LOCAL_FULL/$file"
 		fi
 
         	echo_verbose " * $file"
@@ -312,25 +313,25 @@ getfiles () #copy files from repo into dataset
 	for file in $getlist
 	do
 		file_displ=$file
-		if [ `pwd` != "$DATASET_LOCAL" ]
+		if [ `pwd` != "$DATASET_LOCAL_FULL" ]
 		then
-			file_displ="$DATASET_LOCAL/$file_displ"
+			file_displ="$DATASET_LOCAL_FULL/$file_displ"
 		fi
 
 		echo_verbose -n " * $file_displ... "
-		#cp "$DATASET_REMOTE/$file" "$DATASET_LOCAL/"
+		#cp "$DATASET_REMOTE_FULL/$file" "$DATASET_LOCAL_FULL/"
 		dirname=`dirname "$file"`
 		if [ $dirname != '.' ]
 		then
-			mkdir -p $DATASET_LOCAL/$dirname
+			mkdir -p $DATASET_LOCAL_FULL/$dirname
 			if [ $? -gt 0 ]
 			then
 				echo_verbose "failed (could not make directory $dirname)"
 				break
 			fi
-			rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE/$file" "$DATASET_LOCAL/$dirname/"
+			rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
 		else
-			rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE/$file" "$DATASET_LOCAL/"
+			rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE_FULL/$file" "$DATASET_LOCAL_FULL/"
 		fi
 		if [ $? -eq 0 ]
 		then
@@ -350,7 +351,7 @@ getfiles () #copy files from repo into dataset
 no_action ()
 {
 	echo "No action taken.  This is either not implemented yet or just wouldn't make much sense."
-	echo "You can 1) implement what you want in $DATASET_LOCAL/.ddm"
+	echo "You can 1) implement what you want in $DATASET_LOCAL_FULL/.ddm"
 	echo "        2) file a feature request if this seems reasonable (or send a patch)"
 	if [ -n "$1" ]
 	then
@@ -395,6 +396,34 @@ wrap_rsync ()
  # CALLBACKS. CAN BE OVERWRITTEN IN DATASET-SPECIFIC .ddm FILES. there you can even ignore the $DATASET_TYPE and REPO_TYPE if you want
  #
 
+prebackup ()
+{
+	if [ $DATASET_TYPE == "selection" ]
+	then
+		true
+	else
+		precommit
+	fi
+}
+dobackup ()
+{
+	if [ $DATASET_TYPE == "selection" ]
+	then
+		true
+		#TODO: implement backup for selection
+	else
+		docommit
+	fi
+}
+postbackup ()
+{
+	if [ $DATASET_TYPE == "selection" ]
+	then
+		true
+	else
+		postcommit
+	fi
+}
 
 precheckout ()
 {
@@ -402,41 +431,44 @@ precheckout ()
 }
 docheckout ()
 {
-	if [ "$REPO_TYPE" == 'svn' ]
+	# all datatypes: blob buffer cache copy direct extension selection
+	# not possible: blob, direct
+	# defined for: copy selection
+	if [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "buffer" ]
 	then
-		if [ $DATASET_TYPE == "buffer" ]
-		then
-			no_action "maybe we could copy (only) the remote directories as template hierachy"
-		elif [ $DATASET_TYPE == "extension" ]
-		then
-			no_action
-		elif [ $DATASET_TYPE == "direct" ]
-		then
-			no_action
-		elif [ $DATASET_TYPE == "copy" ] || [ $DATASET_TYPE == "selection" ]
-		then
-			if [ $DATASET_TYPE == "selection" ]
-			then
-				echo_verbose "You are checking out a selection: i assume you will delete what you don't need afterwards?"
-			fi
-			svn checkout $DATASET_REMOTE $DATASET_LOCAL
-			svn propset svn:ignore .ddm $DATASET_LOCAL #TODO: does this conflict with existing properties?
-		fi
-	elif [ "$REPO_TYPE" == 'vfs' ]
+		no_action "maybe we could copy (only) the remote directories as template hierachy? Is this what you expected?"
+	elif [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "extension" ]
 	then
-		if [ $DATASET_TYPE == "copy" ] || [ $DATASET_TYPE == "selection" ]
-		then
-			if [ $DATASET_TYPE == "selection" ]
-			then
-				echo_verbose "You are checking out a selection: i assume you will delete what you don't need afterwards?"
-			fi
-			wrap_rsync -avu '**.ddm' "$DATASET_REMOTE/" "$DATASET_LOCAL"	
-		elif [ $DATASET_TYPE == "direct" ]
-		then
-			no_action "TODO: check for mountpoints, maybe parents and try to mount"
-		else
+		no_action "maybe we could copy (only) the remote directories as template hierachy? Is this what you expected?"
+	elif [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "direct" ]
+	then
 			no_action
-		fi
+	elif [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "selection" ]
+	then
+		echo_verbose "You are checking out a selection: i assume you will delete what you don't need afterwards?"
+		svn checkout $DATASET_REMOTE_FULL $DATASET_LOCAL_FULL
+		props=`svn propget svn:ignore $DATASET_LOCAL_FULL`
+		svn propset svn:ignore "$props
+.ddm" $DATASET_LOCAL_FULL #TODO: clean this up
+	elif [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "copy" ]
+	then
+		svn checkout $DATASET_REMOTE_FULL $DATASET_LOCAL_FULL
+		props=`svn propget svn:ignore $DATASET_LOCAL_FULL`
+		svn propset svn:ignore "$props
+.ddm" $DATASET_LOCAL_FULL #TODO: clean this up
+
+	elif [ "$REPO_TYPE" == 'vfs' ] && [ $DATASET_TYPE == "selection" ]
+	then
+		echo_verbose "You are checking out a selection: either you delete what you don't need afterwards, or you override this function to do what you want"
+		wrap_rsync -avu '**.ddm' "$DATASET_REMOTE_FULL/" "$DATASET_LOCAL_FULL"	
+	elif [ "$REPO_TYPE" == 'vfs' ] && [ $DATASET_TYPE == "copy" ] 
+	then
+		wrap_rsync -avu '**.ddm' "$DATASET_REMOTE_FULL/" "$DATASET_LOCAL_FULL" 
+	elif [ $DATASET_TYPE == "direct" ]
+	then
+		no_action "TODO: check for mountpoints, maybe parents and try to mount"
+	else
+		no_action
 	fi
 }
 postcheckout ()
@@ -452,15 +484,15 @@ docommit ()
 {
 	if [ "$REPO_TYPE" == 'svn' ]
 	then
-		svn commit $DATASET_LOCAL -m $MSG
+		svn commit $DATASET_LOCAL_FULL -m $MSG
 	elif [ "$REPO_TYPE" == 'vfs' ]
 	then
 		if [ $DATASET_TYPE == "copy" ]
 		then
-			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL/" "$DATASET_REMOTE" 1 
+			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$DATASET_REMOTE_FULL" 1 
 		elif [ $DATASET_TYPE == "buffer" ]
 		then
-			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL/" "$DATASET_REMOTE" 0 1
+			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$DATASET_REMOTE_FULL" 0 1
 		elif [ $DATASET_TYPE == "selection" ]
 		then
 			no_action "Maybe the user made changes to the small subset of data he has and wants to commit those..
@@ -488,10 +520,10 @@ doupdate ()
 {
 	if [ "$REPO_TYPE" == 'svn' ]
 	then
-		svn update $DATASET_LOCAL
+		svn update $DATASET_LOCAL_FULL
 	elif [ "$REPO_TYPE" == 'vfs' ]
 	then
-		rsync -avu --exclude='**.ddm' $DATASET_REMOTE/ $DATASET_LOCAL
+		rsync -avu --exclude='**.ddm' $DATASET_REMOTE_FULL/ $DATASET_LOCAL_FULL
 	fi 
 
 
@@ -539,16 +571,15 @@ VFS_SUFFIX=''
 
 DEFAULT_REPO_TYPE='vfs'
 ALLOWED_REPO_TYPES='vfs svn'
-ALLOWED_DATASET_TYPES='buffer copy direct extension selection'
-DEFAULT_ACTION='update' #not used
-ALLOWED_ACTIONS='checkout commit update'
+ALLOWED_DATASET_TYPES='blob buffer cache copy direct extension selection'
+ALLOWED_ACTIONS='backup checkout commit flush restore update'
 IGNORE_DATASET_REMOTE_SVN=0
 
 # look for a ddmrc to load according to the XDG basedir spec
 PWD_BEFORE=`pwd`
 for config_dir in `echo ${XDG_CONFIG_HOME:-$HOME/.config}:${XDG_CONFIG_DIRS:-/etc/xdg} | sed 's/:/\t/g'`
 do
-	config_dir=`echo $config_dir | sed 's#/$##'`
+	config_dir=`sed 's#/$##' <<< $config_dir`
 	if [ -r $config_dir/ddm/ddmrc ]
 	then
 		source $config_dir/ddm/ddmrc
@@ -557,7 +588,7 @@ do
 		then
 			echo_die "There is a problem with your $config_dir/ddm/ddmrc . probably incorrect syntax" 1
 		else
-			echo_verbose_buffer="${echo_verbose_buffer}Successfully included ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
+			echo_verbose_buffer="${echo_verbose_buffer}Successfully included $config_dir/ddm/ddmrc\n"
 		fi
 		break
 	fi
@@ -575,15 +606,15 @@ PWD=PWD_BEFORE
 
 DEFAULT_DATASET_TYPE='copy' # i dont think this should be changed by the user
 ACTION_HELPSTRING="(one of: $ALLOWED_ACTIONS)"
-DATASET_HELPSTRING="(pointer to/name of directory, default is \$PWD ($PWD))"
-DATASET_TYPE_HELPSTRING="(one of: $ALLOWED_DATASET_TYPES, default is $DEFAULT_DATASET_TYPE)  Only used for checkouts"
+DATASET_NAME_HELPSTRING="(pointer to/name of directory, default is \$PWD ($PWD))"
+DATASET_TYPE_HELPSTRING="(one of: $ALLOWED_DATASET_TYPES, default is $DEFAULT_DATASET_TYPE). Usually only used for checkouts"
 REPO_TYPE_HELPSTRING="(one of: $ALLOWED_REPO_TYPES, default is $DEFAULT_REPO_TYPE)"
-MESSAGE_HELPSTRING="(used for commits in svn, ignored otherwise)"
+MESSAGE_HELPSTRING="(usually only used for commits in svn)"
 	
 check_is_in "$DEFAULT_REPO_TYPE" "$ALLOWED_REPO_TYPES" 'repo type' 3
 
 
-DATASET_DIR_NAME_REL=''
+DATASET_LOCAL_REL=''
 DATASET_TYPE=$DEFAULT_DATASET_TYPE
 REPO_TYPE=$DEFAULT_REPO_TYPE
 MSG=''
@@ -602,9 +633,9 @@ do
 	d)
 		if [ -z "$OPTARG" ]
 		then
-			echo_die "To use -d, specify a dataset as argument.  $DATASET_HELPSTRING" 5
+			echo_die "To use -d, specify a dataset as argument.  $DATASET_NAME_HELPSTRING" 5
 		fi
-		DATASET_DIR_NAME_REL=$OPTARG
+		DATASET_LOCAL_REL=$OPTARG
 		;;
 	t)
 		if [ -z "$OPTARG" ]
@@ -650,7 +681,12 @@ echo_verbose $echo_verbose_buffer
 # If no action is specified, calling ddm is useless.
 if [ -z "$ACTION" ]
 then
-       echo_die "You must specify an action with -a <action>.  $ACTION_HELPSTRING" 4
+       echo_die "You must specify an action with -a <action>.  $ACTION_NAME_HELPSTRING" 4
+fi
+# Check if the dataset is defined for the repository type.
+if [ $REPO_TYPE == 'svn' ] && [ $DATASET_TYPE == 'blob' -o $DATASET_TYPE == 'direct' ]
+then
+	echo "A $DATASET_TYPE dataset for a svn repository? That wouldn't make much sense now would it?" 2
 fi
 
 
@@ -658,30 +694,31 @@ set_dataset_info
 
 # override some stuff in the .ddm script in the dataset
 
-if [ -r $DATASET_LOCAL/.ddm ]
+if [ -r $DATASET_LOCAL_FULL/.ddm ]
 then
-	source $DATASET_LOCAL/.ddm
+	source $DATASET_LOCAL_FULL/.ddm
 	if [ $? -ne 0 ]
 	then
-		echo_die "Error: invalid $DATASET_LOCAL/.ddm" 2
+		echo_die "Error: invalid $DATASET_LOCAL_FULL/.ddm" 2
 	else
-		echo_verbose "Included $DATASET_LOCAL/.ddm" 
+		echo_verbose "Included $DATASET_LOCAL_FULL/.ddm" 
 	fi
 fi
+
 PWD_AFTER=`pwd`
 [ "$PWD_AFTER" != "$PWD" ] && echo_die "Please don't cd in your .ddm scripts.  PWD must remain the same!" 2   
         
 
-check_repo_path "$DATASET_REMOTE" "repository $REPO_TYPE"
+check_repo_path "$DATASET_REMOTE_FULL" "repository $REPO_TYPE"
 
 if [ "$ACTION" != checkout ]
 then
-	check_dataset_path "$DATASET_LOCAL" "repository $REPO_TYPE"
+	check_dataset_path "$DATASET_LOCAL_FULL" "repository $REPO_TYPE"
 else
-	check_writable_dir `dirname "$DATASET_LOCAL"` "parent dir for $REPO_TYPE dataset" 2
+	check_writable_dir `dirname "$DATASET_LOCAL_FULL"` "parent dir for $REPO_TYPE dataset" 2
 fi	
 
-echo_verbose "action $ACTION on dataset name $DATASET_NAME type $DATASET_TYPE"
+echo_verbose "action $ACTION on dataset name $DATASET_LOCAL_NAME type $DATASET_TYPE"
 
 pre$ACTION
 do$ACTION
