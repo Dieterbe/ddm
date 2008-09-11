@@ -205,6 +205,9 @@ set_dataset_info()
 	# DATASET_LOCAL_NAME=''         # like $DATASET_LOCAL_BASE but no type suffix
 	# DATASET_TYPE=''               # buffer,copy,extensions etc
 
+	#remove trailing /, if any
+	DATASET_LOCAL_REL=`sed 's#/$##' <<< $DATASET_LOCAL_REL`
+
 	if [ -z "$DATASET_LOCAL_REL" ] || [ "$DATASET_LOCAL_REL" == '.' ]
 	then
 		DATASET_LOCAL_FULL=$PWD
@@ -212,26 +215,21 @@ set_dataset_info()
 	then
 		DATASET_LOCAL_FULL=`dirname $PWD`
 	else
-		#remove trailing /, if any
-		DATASET_LOCAL_REL=`sed 's#/$##' <<< $DATASET_LOCAL_REL`
-	
-		#prepend path, if needed
-		if ! grep '/' <<< $DATASET_LOCAL_REL > /dev/null
+		#prepend path to make absolute, if needed
+		if grep '^/' <<< $DATASET_LOCAL_REL > /dev/null
 		then
-			if [ $PWD != '/' ]
-			then
-				DATASET_LOCAL_FULL="$PWD/$DATASET_LOCAL_REL"
-			else
-				DATASET_LOCAL_FULL="/$DATASET_LOCAL_REL"
-			fi
+			DATASET_LOCAL_FULL=$DATASET_LOCAL_REL
+		else
+			[ $PWD == '/' ] && PWD=''
+			DATASET_LOCAL_FULL=$PWD/$DATASET_LOCAL_REL
 		fi
 	fi
 
 	DATASET_LOCAL_BASE=`basename $DATASET_LOCAL_FULL`
 	DATASET_LOCAL_PARENT_FULL=`    dirname $DATASET_LOCAL_FULL`
-	DATASET_LOCAL_NAME=`    sed 's/-[^-]*$//' <<< $DATASET_LOCAL_BASE`
-	[ $ACTION != checkout ] && DATASET_TYPE=`   sed 's/.*-//' <<< $DATASET_LOCAL_BASE `
-	[ $ACTION != checkout ] && [ "$DATASET_TYPE" == "$DATASET_LOCAL_BASE" ] && DATASET_TYPE=$DEFAULT_DATASET_TYPE
+	DATASET_LOCAL_NAME=`    sed 's/-[^-]*$//' <<< $DATASET_LOCAL_BASE` #TODO: this is a bug. the directory can-be-named-like-this. we must check that the last part is a valid dataset type.
+	[ $ACTION != checkout ] && DATASET_TYPE=`   sed 's/.*-//' <<< $DATASET_LOCAL_BASE ` #TODO: see above
+	[ $ACTION != checkout ] && [ "$DATASET_TYPE" == "$DATASET_LOCAL_BASE" ] && DATASET_TYPE=$DEFAULT_DATASET_TYPE #assign default dataset type if not derived from basename
 	[ "$REPO_TYPE" == 'svn' ] && DATASET_REMOTE_FULL=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_LOCAL_NAME}${SVN_SUFFIX}"
 	[ "$REPO_TYPE" == 'vfs' ] && DATASET_REMOTE_FULL=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_LOCAL_NAME}${VFS_SUFFIX}"
 }
@@ -540,7 +538,7 @@ postupdate ()
  #
 
 # load ddm plugins according to the XDG basedir spec
-
+PWD_BEFORE=`pwd`
 for data_dir in `echo ${XDG_DATA_HOME:-$HOME/.local/share}:${XDG_DATA_DIRS:-'/usr/local/share/:/usr/share/'} | sed 's/:/\t/g'`
 do
 	data_dir=`echo $data_dir | sed 's#/$##'`
@@ -556,6 +554,7 @@ do
 			else
 				echo_verbose_buffer="${echo_verbose_buffer}Plugin   $plugin loaded\n"
 			fi
+			cd $PWD_BEFORE #undo any changes to PWD the plugin might have done
 		done
 	fi
 done
@@ -576,7 +575,7 @@ ALLOWED_ACTIONS='backup checkout commit flush restore update'
 IGNORE_DATASET_REMOTE_SVN=0
 
 # look for a ddmrc to load according to the XDG basedir spec
-PWD_BEFORE=`pwd`
+
 for config_dir in `echo ${XDG_CONFIG_HOME:-$HOME/.config}:${XDG_CONFIG_DIRS:-/etc/xdg} | sed 's/:/\t/g'`
 do
 	config_dir=`sed 's#/$##' <<< $config_dir`
@@ -595,19 +594,20 @@ do
 done
 if [ -z "$ddmrc_included" ]
 then
-	echo_verbose_buffer="${echo_verbose_buffer}No ddmrc included.  If you want to override some values, create a ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc\n"
-else
-	PWD_AFTER=`pwd`
-	[ "$PWD_AFTER" != "$PWD_BEFORE" ] && echo_die "Please don't cd in your ddmrc scripts.  PWD must remain the same!" 1
+	echo_verbose_buffer="${echo_verbose_buffer}Something failed while including ddmrc.  If you want to override some values, create a ${XDG_CONFIG_HOME:-$HOME/.config}/ddm/ddmrc in valid bash\n"
 fi
 
+PWD_AFTER=`pwd`
+[ "$PWD_AFTER" != "$PWD_BEFORE" ] && echo_die "Please don't cd in your ddmrc script.  PWD must remain the same!" 1
+
+
 #VARS NOT OVERRIDABLE BY USER
-PWD=PWD_BEFORE
+PWD=$PWD_BEFORE
 
 DEFAULT_DATASET_TYPE='copy' # i dont think this should be changed by the user
 ACTION_HELPSTRING="(one of: $ALLOWED_ACTIONS)"
 DATASET_NAME_HELPSTRING="(pointer to/name of directory, default is \$PWD ($PWD))"
-DATASET_TYPE_HELPSTRING="(one of: $ALLOWED_DATASET_TYPES, default is $DEFAULT_DATASET_TYPE). Usually only used for checkouts"
+DATASET_TYPE_HELPSTRING="(one of: $ALLOWED_DATASET_TYPES, default is $DEFAULT_DATASET_TYPE). Usually only needed explicitly for checkouts"
 REPO_TYPE_HELPSTRING="(one of: $ALLOWED_REPO_TYPES, default is $DEFAULT_REPO_TYPE)"
 MESSAGE_HELPSTRING="(usually only used for commits in svn)"
 	
