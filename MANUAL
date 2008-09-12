@@ -222,7 +222,8 @@ repositories.  Deleting datasets and setting up/managing/deleting repositories a
   
   10.2) Notes
  
-  * All functions expect abusolute paths. not relative to dataset or whatever
+  * All functions except wrappers expect relative paths, where the root is the dataset/repository directory.
+    Wrappers are very specific, they require absolute paths.
 
 11) Examples
 
