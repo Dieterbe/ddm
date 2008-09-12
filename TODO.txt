@@ -1,5 +1,4 @@
 = 0.4 =
- * make sure $file is good in worker functions, and $file_displ is appropriate
  * implement basic blob datatype that is rsync --delete -au (for now).
  * if selection system doesn't work very well, fall back to "rm and copy again" for now. improvements can come later.
  * doublecheck that directory naming with dataset type suffix is recommended but not necessary (a must for cache datasets)
@@ -10,10 +9,13 @@
  * fix all actions/aliases
 
 
-
 = 0.5 =
  * fix get_exaile plugin
  * better documentation for helper functions and plugins like slidewindow, get_exaile etc (how they work, extendability, where to store, etc)
+ * fix getopts so that 'ddm -a update -p -v .mozilla' (forgot -d) is spotted, and also stuff like -.mozilla or -mozilla should be spotted
+ * 'wrap_rsync --delete? question' -> non-interactive rsyncing / commandline rsync parameter specifying? 
+   important that we can do it sometimes and sometimes not, but not interactive please!
+
 
 = Someday =
  * implement backup action for extension
