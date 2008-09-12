@@ -1,26 +1,24 @@
-0.4
- * good XDG basedir support
+= 0.4 =
+ * make sure $file is good in worker functions, and $file_displ is appropriate
  * implement basic blob datatype that is rsync --delete -au (for now).
  * if selection system doesn't work very well, fall back to "rm and copy again" for now. improvements can come later.
  * doublecheck that directory naming with dataset type suffix is recommended but not necessary (a must for cache datasets)
- * do i want users to define their own dataset types? probably not? then i probably dont want them to invent actions either?
-   -> users should be able to define their own actions, but they must set ALLOWED_ACTIONS in ddmrc to prevent themselves from making typo's
- * users can unset actions if they dont like them right? with unset. this is good?
- * implement backup action for extension
  * make sure ddm behaves like docs say, or edit docs.
- * write Changelog
  * be compatible with xdg userdirectories (may work already, convert ~ and see if it still works)
    http://www.freedesktop.org/wiki/Software/xdg-user-dirs
  * implement flush for buffer
- * better documentation for helper functions and plugins like slidewindow, get_exaile etc (how they work, extendability, where to store, etc)
  * fix all actions/aliases
- * instead of defining the many functions as just 'true', maybe don't set them at all and figure out how to play safe. users can unset anyway
- * add in docs: which datasets are not defined for which repository types. maybe in a table...
- * also show in a table in docs which actions apply on which datasets (by default)
 
-Someday:
+
+
+= 0.5 =
+ * fix get_exaile plugin
+ * better documentation for helper functions and plugins like slidewindow, get_exaile etc (how they work, extendability, where to store, etc)
+
+= Someday =
+ * implement backup action for extension
  * port to ... php? python?
- * ddmrc from shell code that gets sourced to ini config file
+ * ddmrc. now: shell code that gets sourced. someday: ini config file
  * ignore variables in a good format so that they can always be used by bash/rsync/svn/...
  * generic, inheritable functions to find "consumed" files (based on bash history, media player recent files file, ...). 
  * improve blob dataset type to not just rsync but make space efficient snapshots (and you must be able to choose a specific snapshot)
@@ -35,7 +33,13 @@ Someday:
    - rsync wrapper http://www.mikerubel.org/computers/rsync_snapshots/ http://www.sanitarium.net/golug/rsync_backups.html
    - rsnapshot     http://rsnapshot.org/
    - rdiff-backup  http://www.nongnu.org/rdiff-backup/
+ * better documentation for datasets: which are defined for which repository types? ( a table would be useful)
+ * better documentation for actions: what does each action do by default for each dataset type? ( a table would be useful)
 
-Ideas:
+
+= Undecided =
+
+
+= Ideas =
  * datasets that are multiple dataset types for different repo's (would this be useful?)
  * repositories that are a dataset for another repository (would this be useful?) 
