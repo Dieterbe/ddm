@@ -28,10 +28,10 @@ slidewindow ()
 	
 	history -a #TODO:this doesnt work ? does work when executed from terminal o_O
 
-	currentlist=`ls -1 "$DATASET_LOCAL"` #not really used except when no stuff in history found
-	currentlistsize=`ls -1 "$DATASET_LOCAL" | wc -l`
+	currentlist=`ls -1 "$DATASET_LOCAL_FULL"` #not really used except when no stuff in history found
+	currentlistsize=`ls -1 "$DATASET_LOCAL_FULL" | wc -l`
 	
-	usedlist=`grep "$GREPSTRING" ~/.bash_history | grep "$DATASET_DIR_NAME" | grep -v '*' | grep -v '?' | grep -v grep | uniq`
+	usedlist=`grep "$GREPSTRING" ~/.bash_history | grep "$DATASET_LOCAL_BASE" | grep -v '*' | grep -v '?' | grep -v grep | uniq`
 	usedlist="${usedlist//$GREPSTRING /}"
 	
 	echo_debug "usedlist : $usedlist"
@@ -40,7 +40,7 @@ slidewindow ()
 	then
 		echo_verbose "Could not find any matching entries in your history.  I will only add stuff (maybe), and delete nothing"
 		deletelist=''
-		keeplist=`ls -1 "$DATASET_LOCAL"`
+		keeplist=`ls -1 "$DATASET_LOCAL_FULL"`
 		last=''
 		if [ "$GET_NEW" -gt $currentlistsize ]
 		then
@@ -52,17 +52,17 @@ slidewindow ()
 				last=`echo "$currentlist" | $sort | tail -n 1`
 				if [ -n "$last" ] 
 				then	
-					tmplist=`ls -1 "$DATASET_REMOTE" | $SORT | grep "$last" -A $GET_NEW`
+					tmplist=`ls -1 "$REPOSITORY_FULL" | $SORT | grep "$last" -A $GET_NEW`
 					if [ $? -gt 0 ]
 					then
-						echo_die "Could not find last known element ( from dataset ) $last in repository $DATASET_REMOTE"
+						echo_die "Could not find last known element ( from dataset ) $last in repository $REPOSITORY_FULL"
 					fi
 					getlist=`echo "$tmplist" | tail -n +2`
 				else
-					getlist=`ls -1 "$DATASET_REMOTE" | $SORT | head -n "$GET_NEW"`
+					getlist=`ls -1 "$REPOSITORY_FULL" | $SORT | head -n "$GET_NEW"`
 				fi
 			else
-				getlist=`ls -1 "$DATASET_REMOTE" | $SORT | head -n "$GET_NEW"`
+				getlist=`ls -1 "$REPOSITORY_FULL" | $SORT | head -n "$GET_NEW"`
 			fi
 		else
 			getlist=''
@@ -74,11 +74,11 @@ slidewindow ()
 		
 		last=`echo "$usedlist" | tail -n 1 | xargs echo`
 		last=`basename "$last"` #*after* this entry the entries start that we want. we know that -z "last" cause we checked $usedlist
-		tmplist=`ls -1 "$DATASET_REMOTE" | $SORT | grep -A $GET_NEW "$last"`
+		tmplist=`ls -1 "$REPOSITORY_FULL" | $SORT | grep -A $GET_NEW "$last"`
 		if [ $? -gt 0 ]
 		then
-			echo_debug "command: ls -1 $DATASET_REMOTE | $SORT | grep -A $GET_NEW $last"
-			echo_die "Could not find last known element ( from used files ) $last in repository $DATASET_REMOTE"
+			echo_debug "command: ls -1 $REPOSITORY_FULL | $SORT | grep -A $GET_NEW $last"
+			echo_die "Could not find last known element ( from used files ) $last in repository $REPOSITORY_FULL"
 		fi
 		getlist=`echo "$tmplist" | tail -n +2`
 	
