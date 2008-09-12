@@ -86,6 +86,8 @@ This goes way beyond what a "working copy" in VCS lingo is to a repository.
  * dataset type: a dataset's type specifies how the dataset relates to it's
    repository.
    Note that not all datasets are defined for all repository types (eg direct for svn repository)
+   Dataset types cannot be added by the user, you can however request it and provide a use case to
+   defend it.
    - blob: data that is binary and/or hard to grasp for humans, doesn't need tight, fine-grained version control
      and has enough with snapshots at specific points in time of the whole dataset.
      The goal in the future is to make snapshots on points in time,
@@ -122,7 +124,7 @@ This goes way beyond what a "working copy" in VCS lingo is to a repository.
      DATASET_DIR_NAME_REL # identifier to dataset, taken against pwd (could be '.','..', nothing at all, dirname, full path, ..)
      DATASET_NAME='' #like $DATASET_DIR_NAME but no type suffix
      DATASET_TYPE=''
-     REPO_TYPE=''
+     REPOSITORY_TYPE=''
    You can also override the following callbacks:
      pre{checkout,commit,update,flush,backup,restore}
      do{checkout,commit,update,flush,backup,restore}
@@ -155,6 +157,17 @@ These are the default actions and to which corresponding repositories they apply
 
 (*) : usually just mounts the corresponding filesystem
 
+You can create your own actions in .ddm files or plugins if you would find that
+necessary.  Just create callback functions like {pre,do,post}<custom action name>.
+Not all 3 are needed.
+You can also disable callbacks or actions (disabling all 3 callbacks) if you would find that necessary. To do it, you
+just need to unset the functions in .ddm files or plugins. (unset -f <callback>)
+Note:
+ * You can call another callback, but don't call it directly. call it as 'do_callback <callback>'
+   (This wrapper make sure the callback exists, among others)
+ * If you add,disable,.. actions, you must update ALLOWED_ACTIONS, you can
+   do this by overriding it in your ddmrc. 
+
 Note that the ddm command-line tool performs the above described actions on datasets.
 These actions generally either manipulate or create datasets, or update
 repositories.  Deleting datasets and setting up/managing/deleting repositories are to be done manually.
@@ -172,8 +185,8 @@ repositories.  Deleting datasets and setting up/managing/deleting repositories a
    VFS_BASE=''
    VFS_PREFIX=''
    VFS_SUFFIX=''
-   ALLOWED_REPO_TYPES='svn vfs'
-   DEFAULT_REPO_TYPE='vfs'
+   ALLOWED_REPOSITORY_TYPES='svn vfs'
+   DEFAULT_REPOSITORY_TYPE='vfs'
    IGNORE_DATASET_REMOTE_SVN=0 #nag if the repo url figured out is not the same as the one in 'svn info'. you should leave this 0
    ALLOWED_DATASET_TYPES='blob buffer cache copy direct extension selection'
    ALLOWED_ACTIONS='backup checkout commit flush restore update'
@@ -197,15 +210,29 @@ repositories.  Deleting datasets and setting up/managing/deleting repositories a
  100 Internal problem / undefined exitcode
 
 
-10) Examples
+10) Internals
+
+  10.1) Functions
+
+   * actions.    specified on command-line. (eg update)
+   * callbacks.  executed by ddm based on action.  Can be overridden with .ddm files. (eg {pre,do,post}update)
+   * workers.    called by callbacks or other workers.  Can be overridden/extended with plugins. (eg no_action, wrap_rsync, getfiles, delefiles, keepfiles, ...)
+     - wrappers.   special kind of worker functions for a specific purpose (eg wrap_rsync, wrap_keep). pretend-mode switching happens here.
+     - non-wrappers (eg getfiles, deletefiles) call wrappers for 'dangerous' things, so non-wrappers don't need to implement any pretend-mode checking
+  
+  10.2) Notes
+ 
+  * All functions expect abusolute paths. not relative to dataset or whatever
+
+11) Examples
 
   9.1) Example ddmrc
 
   This is a pretty default config, with an svn repository reachable through https
   where all ddm repositories start with 'ddm-', and a vfs repository
   reachable through autofs, where all ddm repositories are in the 'ddm-repo' directory
-    ALLOWED_REPO_TYPES='svn vfs'
-    DEFAULT_REPO_TYPE='vfs'
+    ALLOWED_REPOSITORY_TYPES='svn vfs'
+    DEFAULT_REPOSITORY_TYPE='vfs'
     SVN_BASE='https://server/svn/repos/'
     SVN_PREFIX='ddm-'
     VFS_BASE='/net/server/home/dieter/ddm-repo'
