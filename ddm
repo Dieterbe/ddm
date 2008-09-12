@@ -450,28 +450,42 @@ wrap_rsync ()
 	then
 		echo_die 'internal error: insufficient parameters to rsync wrapper' 100
 	fi
-	if [ "$5" == '1' ]
+	
+	opts=$1
+	ignore=$2
+	src=$3
+	dest=$4
+	ask_del=$5
+	ask_del2=$6
+	
+	# if source is a directory, append / if needed. (needed for rsync)
+	if [ -d "$src" -a ! grep '/$' > /dev/null <<< "$src" ]
+	then
+		src="$src/"
+	fi
+	
+	if [ "$ask_del" -eq 1 ]
 	then
 		ask_user 'delete extraneous files from dest dirs? (rsync --delete)' 1
-		echo_verbose -n " * $3 ... " 
+		echo_verbose -n " * $src ... " 
 		if [ "$user_response" == 'y' ]
 		then
-			[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$1'" --delete --exclude="'$2'" "'$3'" "'$4'"'
-			[ "$PRETEND" -eq 0 ] &&               rsync  "$1"  --delete --exclude="'$2'"  "$3"   "$4"
+			[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$opts'" --delete --exclude="'$ignore'" "'$src'" "'$dest'"'
+			[ "$PRETEND" -eq 0 ] &&               rsync  "$opts"  --delete --exclude="'$ignore'"  "$src"   "$dest"
 		else
-			[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$1'" --exclude="'$2'" "'$3'" "'$4'"'
-			[ "$PRETEND" -eq 0 ] &&               rsync  "$1"  --exclude="'$2'"  "$3"   "$4"
+			[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$opts'" --exclude="'$ignore'" "'$src'" "'$dest'"'
+			[ "$PRETEND" -eq 0 ] &&               rsync  "$opts"  --exclude="'$ignore'"  "$src"   "$dest"
 		fi
 	else
-		echo_verbose -n " * $3 ... " 
-		[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$1'" --exclude="'$2'" "'$3'" "'$4'"'
-		[ "$PRETEND" -eq 0 ] &&	              rsync  "$1"  --exclude="'$2'"  "$3"   "$4"
+		echo_verbose -n " * $src ... " 
+		[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$opts'" --exclude="'$ignore'" "'$src'" "'$dest'"'
+		[ "$PRETEND" -eq 0 ] &&	              rsync  "$opts"  --exclude="'$ignore'"  "$src"   "$dest"
 	fi
 	result=$?
 	if [ $result -eq 0 ] && [ "$PRETEND" -eq 0 ] 
 	then
 		echo_verbose "success"
-		if [ "$6" == '1' ]
+		if [ "$ask_del2" -eq 1 ]
 		then
 			true
 			#ask_user 'locally delete files that we successfully sent to server?' 1
