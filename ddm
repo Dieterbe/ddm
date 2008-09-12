@@ -289,7 +289,7 @@ deletefiles ()
 		if [ "$file" != '..' ] && [ "$file" != '.' ]
 		then
                         file=`echo $file | xargs echo` #remove escape characters.. dont know if this is the best way
-			wrap_rm "$file"
+			wrap_rm "$DATASET_LOCAL_FULL/$file"
                 fi
 	done
 }	
@@ -308,7 +308,7 @@ keepfiles ()
         for file in $keeplist
         do
         	file=`echo "$file" | xargs echo` # -0 fixes quotes but keeps escapes :(
-		wrap_keep "$file"
+		wrap_keep "$DATASET_LOCAL_FULL/$file"
         done
 }
 
@@ -325,11 +325,11 @@ getfiles ()
 	IFS=$'\n'
 	for file in $getlist
 	do
-		#TODO: probably need to strip local path before calling rsync
-		dirname=`dirname "$file"`
-		[ $dirname == '.' ] && wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/"
-		[ $dirname != '.' ] && wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
-	
+		# #TODO: probably need to strip local path before calling rsync
+		# dirname=`dirname "$file"`
+		# [ $dirname == '.' ] && wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/"
+		# [ $dirname != '.' ] && wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
+		wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$file/"
 	done
 }
 
@@ -585,7 +585,7 @@ docommit ()
 {
 	if [ "$REPOSITORY_TYPE" == 'svn' ]
 	then
-		wrap_svn commit $DATASET_LOCAL_FULL -m $MESSAGE
+		wrap_svn commit $DATASET_LOCAL_FULL -m "$MESSAGE"
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ]
 	then
 		if [ $DATASET_LOCAL_TYPE == "copy" ]
@@ -804,11 +804,11 @@ PWD_AFTER=`pwd`
 [ "$PWD_AFTER" != "$PWD" ] && echo_die "Please don't cd in your .ddm scripts.  PWD must remain the same!" 2   
         
 
-check_repo_path "$REPOSITORY_FULL" "repository $REPOSITORY_TYPE"
+check_repo_path "$REPOSITORY_FULL" "$REPOSITORY_TYPE"
 
 if [ "$ACTION" != checkout ]
 then
-	check_dataset_path "$DATASET_LOCAL_FULL" "repository $REPOSITORY_TYPE"
+	check_dataset_path "$DATASET_LOCAL_FULL" "$REPOSITORY_TYPE"
 else
 	check_writable_dir `dirname "$DATASET_LOCAL_FULL"` "parent dir for $REPOSITORY_TYPE dataset" 2
 fi	
