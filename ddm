@@ -10,19 +10,10 @@ VERSION='0.4b'
 # http://github.com/Dieterbe/ddm
 # This code is licensed under GPL v3. See http://www.gnu.org/licenses/gpl-3.0.txt
 
-# basedir spec notes
-# If, when attempting to write a file, the destination dir not exist try to create as 0700. If the exists dont change perms
-# this means we should bail out and show error if write fails
- 
-# When we cannot open/read a file we need, then the processing of the file should be skipped.
-#If due to this a required file could not be found at all, the application may chose to present an error message to the user. 
-
-
  
  #
  # SOME MISC FUNCTIONS
  #
-
 
 usage()
 {
@@ -35,12 +26,14 @@ OPTIONS:
    -a <action>         Action         $ACTION_HELPSTRING
    -d <dataset-name>   Dataset name   $DATASET_NAME_HELPSTRING
    -t <dataset-type>   Dataset type   $DATASET_TYPE_HELPSTRING
-   -r <repo-type>      Repo type      $REPO_TYPE_HELPSTRING
+   -r <repo-type>      Repo type      $REPOSITORY_TYPE_HELPSTRING
    -m <message>        Message        $MESSAGE_HELPSTRING
+   -p                  Pretend
    -v                  Verbose
    -h                  Show help      (this message)
 EOF
 }
+
 
 ask_user ()
 {
@@ -49,7 +42,7 @@ ask_user ()
 	
 	user_response= # this variable will be read by the caller.
 
-	[ -n "$1" ] && echo_die "ask_user called without question to ask" 100
+	[ -z "$1" ] && echo_die "ask_user called without question to ask" 100
 	
 	if [ "$2" == '1' ]
 	then
@@ -64,6 +57,29 @@ ask_user ()
 	[ "$2" == '1' ] && [ "$user_response" == 'y' -o "$user_response" == 'yes' ] && user_response='y'
 }
 
+
+# echo's the string if at least verbose or pretend is enabled
+
+echo_pretend_verbose () 
+{
+	if [ "$PRETEND" -eq 1 ]
+	then
+		echo -e "$@ (pretend)"
+	else
+		echo_verbose "$@"
+	fi
+}
+
+
+echo_pretend ()
+{
+	if [ "$PRETEND" -eq 1 ]
+	then
+		echo -e "$@ (pretend)"
+	fi
+}
+
+
 echo_verbose ()
 {
 	if [ -n "$VERBOSE" ]
@@ -73,6 +89,7 @@ echo_verbose ()
 		echo -e "$@"
 	fi
 }
+
 
 echo_debug ()
 {
@@ -84,6 +101,7 @@ echo_debug ()
 	return 0
 }
 
+
 echo_die ()
 {
 	echo "$1" >&2
@@ -92,12 +110,13 @@ echo_die ()
 	exit 100
 }
 
+
 check_is_in()
 {
 	test=${1:-unknown}
 	allowed=${2:-unknown}
 	type=${3:-unknown}
-	exitcode=${4:-100}
+	exitcode=${4:-100} #exit code to use when test fails
 	
 	found=0
 	
@@ -114,6 +133,7 @@ check_is_in()
 		echo_die "$test is not an allowed/known $type (allowed: $allowed)" $exitcode
 	fi
 }
+
 
 check_writable_dir ()
 {
@@ -136,6 +156,7 @@ check_writable_dir ()
 	fi
 }
 
+
 check_repo_path ()
 {
 	[ -z "$1" -o -z "$2" ] && echo_debug "no path or repotype given when calling check_repo_path" && exit 100
@@ -147,7 +168,7 @@ check_repo_path ()
 	then
 		if [ "$IGNORE_DATASET_REMOTE_SVN" -eq 0 ]
 		then
-			output=`svn info $path 2>&1`
+			output=`wrap_svn info $path 2>&1`
 			if [ $? -gt 0 ]
 			then
 				echo "Something appears to be wrong with the $repotype repo $path :"
@@ -160,6 +181,7 @@ check_repo_path ()
 	fi
 }
 
+
 check_dataset_path ()
 {
 	[ -z "$1" -o -z "$2" ] && echo_debug "no path or repotype given when calling check_dataset_path" && exit 100
@@ -169,7 +191,7 @@ check_dataset_path ()
 	
 	if [ "$repotype" == 'svn' ]
 	then
-		output=`svn info $path 2>&1`
+		output=`wrap_svn info $path 2>&1`
 		if [ $? -gt 0 ]
 		then
 			echo "Something appears to be wrong with the $repotype dataset $path :"
@@ -179,10 +201,10 @@ check_dataset_path ()
 		if [ "$IGNORE_DATASET_REMOTE_SVN" -eq 0 ]
 		then
 			remote=`echo "$output" | grep 'URL: ' | awk '{print $2}'`
-			if [ "$remote" != "$DATASET_REMOTE_FULL" ]
+			if [ "$remote" != "$REPOSITORY_FULL" ]
 			then
 				echo "Mismatch between remote svn paths:"
-				echo ".ddm : $DATASET_REMOTE_FULL"
+				echo ".ddm : $REPOSITORY_FULL"
 				echo "local svn info : $remote"
 			fi
 		fi
@@ -198,12 +220,13 @@ set_dataset_info()
 	# here we set all the variables, based on what DATASET_LOCAL_REL (given by user) & PWD are
 	# DATASET_LOCAL_REL             # identifier to dataset, taken against pwd ( could be '.','..', nothing at all, dirname, full path, ..) 
 
-	# DATASET_REMOTE_FULL=''        # full path to dataset remotely (or locally if network mount)
+	# REPOSITORY_FULL=''            # full path to repository (remote or locally if network mount)
+	# (REPOSITORY_TYPE)             # type of the repository (not set here)
 	# DATASET_LOCAL_FULL=''         # full path to dataset locally (including type suffix if any)
 	# DATASET_LOCAL_PARENT_FULL=''  # the path of the parent directory of dataset ( aka dirname )
 	# DATASET_LOCAL_BASE=''         # like $DATASET_LOCAL_FULL but no path ( aka basename) 
 	# DATASET_LOCAL_NAME=''         # like $DATASET_LOCAL_BASE but no type suffix
-	# DATASET_TYPE=''               # buffer,copy,extensions etc
+	# DATASET_LOCAL_TYPE=''         # buffer,copy,extensions etc
 
 	#remove trailing /, if any
 	DATASET_LOCAL_REL=`sed 's#/$##' <<< $DATASET_LOCAL_REL`
@@ -228,18 +251,30 @@ set_dataset_info()
 	DATASET_LOCAL_BASE=`basename $DATASET_LOCAL_FULL`
 	DATASET_LOCAL_PARENT_FULL=`    dirname $DATASET_LOCAL_FULL`
 	DATASET_LOCAL_NAME=`    sed 's/-[^-]*$//' <<< $DATASET_LOCAL_BASE` #TODO: this is a bug. the directory can-be-named-like-this. we must check that the last part is a valid dataset type.
-	[ $ACTION != checkout ] && DATASET_TYPE=`   sed 's/.*-//' <<< $DATASET_LOCAL_BASE ` #TODO: see above
-	[ $ACTION != checkout ] && [ "$DATASET_TYPE" == "$DATASET_LOCAL_BASE" ] && DATASET_TYPE=$DEFAULT_DATASET_TYPE #assign default dataset type if not derived from basename
-	[ "$REPO_TYPE" == 'svn' ] && DATASET_REMOTE_FULL=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_LOCAL_NAME}${SVN_SUFFIX}"
-	[ "$REPO_TYPE" == 'vfs' ] && DATASET_REMOTE_FULL=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_LOCAL_NAME}${VFS_SUFFIX}"
+	[ $ACTION != checkout ] && DATASET_LOCAL_TYPE=`   sed 's/.*-//' <<< $DATASET_LOCAL_BASE ` #TODO: see above
+	[ $ACTION != checkout ] && [ "$DATASET_LOCAL_TYPE" == "$DATASET_LOCAL_BASE" ] && DATASET_LOCAL_TYPE=$DEFAULT_DATASET_TYPE #assign default dataset type if not derived from basename
+	[ "$REPOSITORY_TYPE" == 'svn' ] && REPOSITORY_FULL=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_LOCAL_NAME}${SVN_SUFFIX}"
+	[ "$REPOSITORY_TYPE" == 'vfs' ] && REPOSITORY_FULL=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_LOCAL_NAME}${VFS_SUFFIX}"
+	
+	echo_debug "set_dataset_info related variables:
+DATASET_LOCAL_REL $DATASET_LOCAL_REL
+REPOSITORY_FULL $REPOSITORY_FULL
+REPOSITORY_TYPE $REPOSITORY_TYPE
+DATASET_LOCAL_FULL $DATASET_LOCAL_FULL
+DATASET_LOCAL_PARENT_FULL $DATASET_LOCAL_PARENT_FULL
+DATASET_LOCAL_BASE $DATASET_LOCAL_BASE
+DATASET_LOCAL_NAME $DATASET_LOCAL_NAME
+DATASET_LOCAL_TYPE $DATASET_LOCAL_TYPE"      
+	                                                        
 }
 
 
  #
- # WORKER HELPER FUNCTIONS. TO BE USED BY WORKER FUNCTIONS
+ # WORKERS. CAN BE CALLED BY CALLBACKS OR OTHER WORKERS.
  #
  
 # delete files from dataset
+
 deletefiles ()
 {
 	deletelist="$1"
@@ -254,30 +289,13 @@ deletefiles ()
 		if [ "$file" != '..' ] && [ "$file" != '.' ]
 		then
                         file=`echo $file | xargs echo` #remove escape characters.. dont know if this is the best way
-			#file=`basename $file` #deprecated : lets make it the responsability of the caller to decide what he wants to delete
-                        if [ `pwd` != "$DATASET_LOCAL_FULL" ]
-                        then
-                        	file="$DATASET_LOCAL_FULL/$file"
-                        fi
-                        
-			echo_verbose -n " * $file... "
-
-                        if [ -f "$file" ]
-                        then
-                                echo_verbose -n "found . removing... "
-                                rm "$file"
-				if [ $? -eq 0 ]
-				then
-					echo_verbose "success"
-				else
-					echo_verbose "failed"
-                        	fi
-                        else
-                                echo_verbose "not found"
-                        fi
+			wrap_rm "$file"
                 fi
 	done
 }	
+
+
+# keep files in the dataset
 
 keepfiles ()
 {
@@ -290,17 +308,14 @@ keepfiles ()
         for file in $keeplist
         do
         	file=`echo "$file" | xargs echo` # -0 fixes quotes but keeps escapes :(
-        	file=`basename $file`
-		if [ `pwd` != "$DATASET_LOCAL_FULL" ]
-		then
-			file="$DATASET_LOCAL_FULL/$file"
-		fi
-
-        	echo_verbose " * $file"
+		wrap_keep "$file"
         done
 }
 
-getfiles () #copy files from repo into dataset
+
+#copy files from repo into dataset
+
+getfiles ()
 {
 	getlist="$1"
 	getlistsize=`grep -cv '^$' <<< "$getlist"`
@@ -310,42 +325,15 @@ getfiles () #copy files from repo into dataset
 	IFS=$'\n'
 	for file in $getlist
 	do
-		file_displ=$file
-		if [ `pwd` != "$DATASET_LOCAL_FULL" ]
-		then
-			file_displ="$DATASET_LOCAL_FULL/$file_displ"
-		fi
-
-		echo_verbose -n " * $file_displ... "
-		#cp "$DATASET_REMOTE_FULL/$file" "$DATASET_LOCAL_FULL/"
+		#TODO: probably need to strip local path before calling rsync
 		dirname=`dirname "$file"`
-		if [ $dirname != '.' ]
-		then
-			mkdir -p $DATASET_LOCAL_FULL/$dirname
-			if [ $? -gt 0 ]
-			then
-				echo_verbose "failed (could not make directory $dirname)"
-				break
-			fi
-			rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
-		else
-			rsync -avuq --exclude='**.ddm' "$DATASET_REMOTE_FULL/$file" "$DATASET_LOCAL_FULL/"
-		fi
-		if [ $? -eq 0 ]
-		then
-			echo_verbose "success"
-		else
-			echo_verbose "failed (could not rsync)"
-		fi
+		[ $dirname == '.' ] && wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/"
+		[ $dirname != '.' ] && wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
+	
 	done
-		       
 }
 
 
- #
- # WORKER FUNCTIONS TO BE USED BY THE CALLBACKS
- #
- 
 no_action ()
 {
 	echo "No action taken.  This is either not implemented yet or just wouldn't make much sense."
@@ -357,8 +345,107 @@ no_action ()
 	fi
 }
 
+
+wrap_keep ()
+{
+	# $1 filename
+	if [ -z "$1" ]
+	then
+		echo_die 'internal error: insufficient parameters to keep wrapper' 100
+	fi
+	
+	file=$1
+	echo_verbose " * $file"
+	echo_pretend "not touching $file"
+}
+
+
+wrap_rm ()
+{
+	# $1 filename
+	# $2 options
+	if [ -z "$1" ]
+	then
+		echo_die 'internal error: insufficient parameters to rm wrapper' 100
+	fi
+
+	file=$1
+	
+	echo_verbose -n " * $file... "
+
+	if [ -f "$file" ]
+	then
+		if [ "$PRETEND" -eq 0 ]
+		then
+			echo_verbose -n "found . removing... "
+			rm "$2" "$file"
+			if [ $? -eq 0 ]
+			then
+				echo_verbose "success"
+			else
+				echo_verbose "failed"
+			fi
+		else
+			echo_verbose -n "found. pretending remove..."
+			echo_pretend 'rm "'$2'" "'$file'"'
+			if [ -w "$file" ]
+			then
+				echo_verbose "should work"
+			else
+				echo_verbose "will fail (file not writable)"
+			fi
+		fi
+	else
+		echo_verbose "not found"
+	fi
+}
+
+	
+wrap_svn ()
+{
+	# $1 svn action (update,commit,..)
+	# $@ all svn args
+
+	if [ -z "$1" ]
+	then
+		echo_die 'internal error: insufficient parameters to svn wrapper' 100
+	fi
+	if [ "$PRETEND" -eq 1 -a "$1" != info ] #svn info doesn't need to be pretended.  we can (and should) safely do this.
+	then
+		echo_pretend "svn $@"
+		[ "$1" == 'checkout' ] && echo_pretend "svn propedit svn:ignore . --non-interactive --editor-cmd 'echo .ddm >>'"
+	else
+		echo_verbose " * svn $@ ..."
+		if svn $@
+		then
+			echo "success"
+			if [ "$1" == 'checkout' ]
+			then
+				echo_verbose " * svn setting ignore for .ddm ..."
+				#TODO: paths??
+				if svn propedit svn:ignore . --non-interactive --editor-cmd 'echo .ddm >>'
+				then
+					echo "success"
+				else
+					echo "failed"
+				fi
+			fi
+		else
+			echo "failed"
+		fi
+	fi
+}
+
+
 wrap_rsync ()
 {
+	# $1 options (eg -avu)
+	# $2 ignore pattern (eg '**.ddm')
+	# $3 source
+	# $4 destination
+	# $5 1 -> ask user for --delete (optional)
+	# $6 1 -> ask user to delete sucessfully rsynced files (optional)
+
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
 	then
 		echo_die 'internal error: insufficient parameters to rsync wrapper' 100
@@ -366,171 +453,175 @@ wrap_rsync ()
 	if [ "$5" == '1' ]
 	then
 		ask_user 'delete extraneous files from dest dirs? (rsync --delete)' 1
+		echo_verbose -n " * $3 ... " 
 		if [ "$user_response" == 'y' ]
 		then
-			rsync "$1" --delete --exclude="$2" "$3" "$4"
+			[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$1'" --delete --exclude="'$2'" "'$3'" "'$4'"'
+			[ "$PRETEND" -eq 0 ] &&               rsync  "$1"  --delete --exclude="'$2'"  "$3"   "$4"
 		else
-			rsync "$1" --exclude="$2" "$3" "$4"
+			[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$1'" --exclude="'$2'" "'$3'" "'$4'"'
+			[ "$PRETEND" -eq 0 ] &&               rsync  "$1"  --exclude="'$2'"  "$3"   "$4"
 		fi
 	else
-		rsync "$1" --exclude="$2" "$3" "$4"
+		echo_verbose -n " * $3 ... " 
+		[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync "'$1'" --exclude="'$2'" "'$3'" "'$4'"'
+		[ "$PRETEND" -eq 0 ] &&	              rsync  "$1"  --exclude="'$2'"  "$3"   "$4"
 	fi
 	result=$?
-	if [ $result -eq 0 ]
+	if [ $result -eq 0 ] && [ "$PRETEND" -eq 0 ] 
 	then
-		echo "rsync success"
+		echo_verbose "success"
 		if [ "$6" == '1' ]
 		then
-			ask_user 'locally delete files that we successfully sent to server?' 1
-			#TODO: implement this
+			true
+			#ask_user 'locally delete files that we successfully sent to server?' 1
+			#TODO: implement this, rsync has a param for that btw.
 		fi
-	else
-		echo "rsync failed"
+	elif [ "$PRETEND" -eq 0 ]
+	then
+		echo "failed"
 	fi
 }
 
 
+# calls a certain callback, if it exists
+
+do_callback ()
+{
+	# $1 callback name
+	
+	if [ -z "$1" ]
+	then
+		echo_die 'internal error: insufficient parameters in do_callback' 100
+	fi
+
+	if type -t $1 | grep function >/dev/null
+	then
+		echo_verbose "callback $1 defined. executing..."
+		$1
+	else
+		echo_verbose "callback $1 not defined. skipping."
+	fi
+
+}
+
+
  #
- # CALLBACKS. CAN BE OVERWRITTEN IN DATASET-SPECIFIC .ddm FILES. there you can even ignore the $DATASET_TYPE and REPO_TYPE if you want
+ # CALLBACKS. CAN BE OVERWRITTEN IN DATASET-SPECIFIC .ddm FILES. there you can even ignore the $DATASET_LOCAL_TYPE and REPOSITORY_TYPE if you want
  #
 
 prebackup ()
 {
-	if [ $DATASET_TYPE == "selection" ]
+	if [ $DATASET_LOCAL_TYPE == "selection" ]
 	then
 		true
 	else
-		precommit
+		do_callback precommit
 	fi
 }
+
+
 dobackup ()
 {
-	if [ $DATASET_TYPE == "selection" ]
+	if [ $DATASET_LOCAL_TYPE == "selection" ]
 	then
 		true
 		#TODO: implement backup for selection
 	else
-		docommit
-	fi
-}
-postbackup ()
-{
-	if [ $DATASET_TYPE == "selection" ]
-	then
-		true
-	else
-		postcommit
+		do_callback docommit
 	fi
 }
 
-precheckout ()
+
+postbackup ()
 {
-	true
+	if [ $DATASET_LOCAL_TYPE == "selection" ]
+	then
+		true
+	else
+		do_callback postcommit
+	fi
 }
+
+
 docheckout ()
 {
 	# all datatypes: blob buffer cache copy direct extension selection
 	# not possible: blob, direct
 	# defined for: copy selection
-	if [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "buffer" ]
+	if [ "$REPOSITORY_TYPE" == 'svn' ] && [ $DATASET_LOCAL_TYPE == "buffer" ]
 	then
 		no_action "maybe we could copy (only) the remote directories as template hierachy? Is this what you expected?"
-	elif [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "extension" ]
+	elif [ "$REPOSITORY_TYPE" == 'svn' ] && [ $DATASET_LOCAL_TYPE == "extension" ]
 	then
 		no_action "maybe we could copy (only) the remote directories as template hierachy? Is this what you expected?"
-	elif [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "direct" ]
+	elif [ "$REPOSITORY_TYPE" == 'svn' ] && [ $DATASET_LOCAL_TYPE == "direct" ]
 	then
-			no_action
-	elif [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "selection" ]
+		no_action
+	elif [ "$REPOSITORY_TYPE" == 'svn' ] && [ $DATASET_LOCAL_TYPE == "selection" ]
 	then
 		echo_verbose "You are checking out a selection: i assume you will delete what you don't need afterwards?"
-		svn checkout $DATASET_REMOTE_FULL $DATASET_LOCAL_FULL
-		props=`svn propget svn:ignore $DATASET_LOCAL_FULL`
-		svn propset svn:ignore "$props
-.ddm" $DATASET_LOCAL_FULL #TODO: clean this up
-	elif [ "$REPO_TYPE" == 'svn' ] && [ $DATASET_TYPE == "copy" ]
+		wrap_svn checkout $REPOSITORY_FULL $DATASET_LOCAL_FULL
+	elif [ "$REPOSITORY_TYPE" == 'svn' ] && [ $DATASET_LOCAL_TYPE == "copy" ]
 	then
-		svn checkout $DATASET_REMOTE_FULL $DATASET_LOCAL_FULL
-		props=`svn propget svn:ignore $DATASET_LOCAL_FULL`
-		svn propset svn:ignore "$props
-.ddm" $DATASET_LOCAL_FULL #TODO: clean this up
-
-	elif [ "$REPO_TYPE" == 'vfs' ] && [ $DATASET_TYPE == "selection" ]
+		wrap_svn checkout $REPOSITORY_FULL $DATASET_LOCAL_FULL
+	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "selection" ]
 	then
 		echo_verbose "You are checking out a selection: either you delete what you don't need afterwards, or you override this function to do what you want"
-		wrap_rsync -avu '**.ddm' "$DATASET_REMOTE_FULL/" "$DATASET_LOCAL_FULL"	
-	elif [ "$REPO_TYPE" == 'vfs' ] && [ $DATASET_TYPE == "copy" ] 
+		wrap_rsync -avu '**.ddm' "$REPOSITORY_FULL/" "$DATASET_LOCAL_FULL"	
+	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "copy" ] 
 	then
-		wrap_rsync -avu '**.ddm' "$DATASET_REMOTE_FULL/" "$DATASET_LOCAL_FULL" 
-	elif [ $DATASET_TYPE == "direct" ]
+		wrap_rsync -avu '**.ddm' "$REPOSITORY_FULL/" "$DATASET_LOCAL_FULL" 
+	elif [ $DATASET_LOCAL_TYPE == "direct" ]
 	then
 		no_action "TODO: check for mountpoints, maybe parents and try to mount"
 	else
 		no_action
 	fi
 }
-postcheckout ()
-{
-	true
-}			
 
-precommit ()
-{
-	true
-}
+
 docommit ()
 {
-	if [ "$REPO_TYPE" == 'svn' ]
+	if [ "$REPOSITORY_TYPE" == 'svn' ]
 	then
-		svn commit $DATASET_LOCAL_FULL -m $MSG
-	elif [ "$REPO_TYPE" == 'vfs' ]
+		wrap_svn commit $DATASET_LOCAL_FULL -m $MESSAGE
+	elif [ "$REPOSITORY_TYPE" == 'vfs' ]
 	then
-		if [ $DATASET_TYPE == "copy" ]
+		if [ $DATASET_LOCAL_TYPE == "copy" ]
 		then
-			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$DATASET_REMOTE_FULL" 1 
-		elif [ $DATASET_TYPE == "buffer" ]
+			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 1 
+		elif [ $DATASET_LOCAL_TYPE == "buffer" ]
 		then
-			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$DATASET_REMOTE_FULL" 0 1
-		elif [ $DATASET_TYPE == "selection" ]
+			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 0 1
+		elif [ $DATASET_LOCAL_TYPE == "selection" ]
 		then
 			no_action "Maybe the user made changes to the small subset of data he has and wants to commit those..
 			          gonna be hard to implement something like that..."
-		elif [ $DATASET_TYPE == "extension" ]
+		elif [ $DATASET_LOCAL_TYPE == "extension" ]
 		then
 			no_action "Since this is an extension, i woulnd't know where to send data to..."
-		elif [ $DATASET_TYPE == "direct" ]
+		elif [ $DATASET_LOCAL_TYPE == "direct" ]
 		then
 			no_action "Maybe we could umount? ( if it's a direct mount) and ask to umount if the parent is a mountpoint"
 		fi
 	fi 
 
 }
-postcommit ()
-{
-	true
-}
 
-preupdate ()
-{
-	true
-}
+
 doupdate ()
 {
-	if [ "$REPO_TYPE" == 'svn' ]
+	if [ "$REPOSITORY_TYPE" == 'svn' ]
 	then
-		svn update $DATASET_LOCAL_FULL
-	elif [ "$REPO_TYPE" == 'vfs' ]
+		wrap_svn update $DATASET_LOCAL_FULL
+	elif [ "$REPOSITORY_TYPE" == 'vfs' ]
 	then
-		rsync -avu --exclude='**.ddm' $DATASET_REMOTE_FULL/ $DATASET_LOCAL_FULL
+		wrap_rsync -avu '**.ddm' $REPOSITORY_FULL/ $DATASET_LOCAL_FULL
 	fi 
 
 
 }
-postupdate ()
-{
-	true
-}	
-
 
 
  #
@@ -568,8 +659,8 @@ VFS_BASE=''
 VFS_PREFIX=''
 VFS_SUFFIX=''
 
-DEFAULT_REPO_TYPE='vfs'
-ALLOWED_REPO_TYPES='vfs svn'
+DEFAULT_REPOSITORY_TYPE='vfs'
+ALLOWED_REPOSITORY_TYPES='vfs svn'
 ALLOWED_DATASET_TYPES='blob buffer cache copy direct extension selection'
 ALLOWED_ACTIONS='backup checkout commit flush restore update'
 IGNORE_DATASET_REMOTE_SVN=0
@@ -608,18 +699,19 @@ DEFAULT_DATASET_TYPE='copy' # i dont think this should be changed by the user
 ACTION_HELPSTRING="(one of: $ALLOWED_ACTIONS)"
 DATASET_NAME_HELPSTRING="(pointer to/name of directory, default is \$PWD ($PWD))"
 DATASET_TYPE_HELPSTRING="(one of: $ALLOWED_DATASET_TYPES, default is $DEFAULT_DATASET_TYPE). Usually only needed explicitly for checkouts"
-REPO_TYPE_HELPSTRING="(one of: $ALLOWED_REPO_TYPES, default is $DEFAULT_REPO_TYPE)"
+REPOSITORY_TYPE_HELPSTRING="(one of: $ALLOWED_REPOSITORY_TYPES, default is $DEFAULT_REPOSITORY_TYPE)"
 MESSAGE_HELPSTRING="(usually only used for commits in svn)"
 	
-check_is_in "$DEFAULT_REPO_TYPE" "$ALLOWED_REPO_TYPES" 'repo type' 3
+check_is_in "$DEFAULT_REPOSITORY_TYPE" "$ALLOWED_REPOSITORY_TYPES" 'repo type' 3
 
 
-DATASET_LOCAL_REL=''
-DATASET_TYPE=$DEFAULT_DATASET_TYPE
-REPO_TYPE=$DEFAULT_REPO_TYPE
-MSG=''
+DATASET_LOCAL_REL=$PWD
+DATASET_LOCAL_TYPE=$DEFAULT_DATASET_TYPE
+REPOSITORY_TYPE=$DEFAULT_REPOSITORY_TYPE
+MESSAGE=''
+PRETEND=0
 
-while getopts “:a:d:t:r:m:vh” OPTION
+while getopts “:a:d:t:r:m:vhp” OPTION
 do
 	case $OPTION in
 	a)
@@ -627,7 +719,7 @@ do
 		then
 			echo_die "To use -a, specify an action as argument.  $ACTION_HELPSTRING" 5
 		fi
-		#check_is_in "$OPTARG" "$ALLOWED_ACTIONS" action 4 #TODO : will be allow custom actions or not? probably not.. mss user ALLOWED_ACTIONS laten definen in ddmrc
+		check_is_in "$OPTARG" "$ALLOWED_ACTIONS" action 4 
 		ACTION=$OPTARG
 		;;
 	d)
@@ -643,22 +735,25 @@ do
 			echo_die "To use -t, specify a dataset-type as argument.  $DATASET_TYPE_HELPSTRING" 5
 		fi
 		check_is_in "$OPTARG" "$ALLOWED_DATASET_TYPES" 'dataset type' 2
-		DATASET_TYPE=$OPTARG
+		DATASET_LOCAL_TYPE=$OPTARG
 		;;
 	r)
 		if [ -z "$OPTARG" ]
 		then
-			echo_die "To use -r, specify a repo-type as argument.  $REPO_TYPE_HELPSTRING" 5
+			echo_die "To use -r, specify a repo-type as argument.  $REPOSITORY_TYPE_HELPSTRING" 5
 		fi
-		check_is_in "$OPTARG" "$ALLOWED_REPO_TYPES" 'repo type' 3
-		REPO_TYPE=$OPTARG
+		check_is_in "$OPTARG" "$ALLOWED_REPOSITORY_TYPES" 'repo type' 3
+		REPOSITORY_TYPE=$OPTARG
 		;;
 	m)
 		if [ -z "$OPTARG" ]
 		then
 			echo_die "To use -m, specify a message as argument.  $MESSAGE_HELPSTRING" 5
 		fi
-		MSG=$OPTARG
+		MESSAGE=$OPTARG
+		;;
+	p)
+		PRETEND=1
 		;;
 	v)
 		VERBOSE=1
@@ -684,9 +779,9 @@ then
        echo_die "You must specify an action with -a <action>.  $ACTION_NAME_HELPSTRING" 4
 fi
 # Check if the dataset is defined for the repository type.
-if [ $REPO_TYPE == 'svn' ] && [ $DATASET_TYPE == 'blob' -o $DATASET_TYPE == 'direct' ]
+if [ $REPOSITORY_TYPE == 'svn' ] && [ $DATASET_LOCAL_TYPE == 'blob' -o $DATASET_LOCAL_TYPE == 'direct' ]
 then
-	echo "A $DATASET_TYPE dataset for a svn repository? That wouldn't make much sense now would it?" 2
+	echo "A $DATASET_LOCAL_TYPE dataset for a svn repository? That wouldn't make much sense now would it?" 2
 fi
 
 
@@ -699,7 +794,7 @@ then
 	source $DATASET_LOCAL_FULL/.ddm
 	if [ $? -ne 0 ]
 	then
-		echo_die "Error: invalid $DATASET_LOCAL_FULL/.ddm" 2
+		echo_die "Failed sourcing $DATASET_LOCAL_FULL/.ddm" 2
 	else
 		echo_verbose "Included $DATASET_LOCAL_FULL/.ddm" 
 	fi
@@ -709,19 +804,20 @@ PWD_AFTER=`pwd`
 [ "$PWD_AFTER" != "$PWD" ] && echo_die "Please don't cd in your .ddm scripts.  PWD must remain the same!" 2   
         
 
-check_repo_path "$DATASET_REMOTE_FULL" "repository $REPO_TYPE"
+check_repo_path "$REPOSITORY_FULL" "repository $REPOSITORY_TYPE"
 
 if [ "$ACTION" != checkout ]
 then
-	check_dataset_path "$DATASET_LOCAL_FULL" "repository $REPO_TYPE"
+	check_dataset_path "$DATASET_LOCAL_FULL" "repository $REPOSITORY_TYPE"
 else
-	check_writable_dir `dirname "$DATASET_LOCAL_FULL"` "parent dir for $REPO_TYPE dataset" 2
+	check_writable_dir `dirname "$DATASET_LOCAL_FULL"` "parent dir for $REPOSITORY_TYPE dataset" 2
 fi	
 
-echo_verbose "action $ACTION on dataset name $DATASET_LOCAL_NAME type $DATASET_TYPE"
+echo_verbose "action $ACTION on dataset $DATASET_LOCAL_FULL ( $DATASET_LOCAL_TYPE ), repo $REPOSITORY_FULL ( $REPOSITORY_TYPE ) [ DEBUG $DEBUG - PRETEND $PRETEND - VERBOSE $VERBOSE ]"
 
-pre$ACTION
-do$ACTION
-post$ACTION
+for prefix in pre 'do' post
+do
+	do_callback $prefix$ACTION
+done
 
-echo_verbose "finished"
+echo_pretend "Done"
