@@ -15,6 +15,7 @@
  * good way to specify what we want for 'static' selections (eg not where we use slidewindow, get_exaile or other specific functions).
    using a variable with a list of files/directories? find command?
  * good way to update (static) selections. (eg don't delete everything and then get everything again)
+ * some error messages still need to go to stderr instead of stdout
 
 = Someday =
  * implement backup action for extension
