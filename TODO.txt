@@ -3,7 +3,6 @@
  * make sure ddm behaves like docs say, or edit docs.
  * be compatible with xdg userdirectories (may work already, convert ~ and see if it still works)
    http://www.freedesktop.org/wiki/Software/xdg-user-dirs
- * check/fix restore and update actions
 
 
 = 0.5 =

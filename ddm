@@ -583,7 +583,11 @@ docommit ()
 	if [ "$REPOSITORY_TYPE" == 'svn' ] && [ $DATASET_LOCAL_TYPE == "blob" -o $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "selection" ]
 	then
 		wrap_svn commit $DATASET_LOCAL_FULL -m "$MESSAGE"
-	elif [ "$REPOSITORY_TYPE" == 'vfs' ]
+	elif [ "$REPOSITORY_TYPE" == 'svn' ]
+	then
+		no_action
+	fi
+	if [ "$REPOSITORY_TYPE" == 'vfs' ]
 	then
 		if [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob" ]
 		then
@@ -637,7 +641,14 @@ prerestore ()
 
 dorestore ()
 {
+	# all datatypes: blob buffer cache copy direct extension selection
 	do_callback doupdate
+	if [ "$REPOSITORY_TYPE" == 'svn' ]
+	then
+		wrap_svn revert -R $DATASET_LOCAL_FULL
+		#TODO: we could still have conflicts or removed directories
+		do_callback doupdate
+	fi
 }
 
 
@@ -649,21 +660,25 @@ postrestore ()
 
 doupdate ()
 {
+	# all datatypes: blob buffer cache copy direct extension selection
+	# defined for: all svn except direct, selection/vfs, copy/vfs, blob/vfs, direct/vfs (alias for checkout)
 	if [ "$REPOSITORY_TYPE" == 'svn' -a ! $DATASET_LOCAL_TYPE == "direct" ]
 	then
 		wrap_svn update $DATASET_LOCAL_FULL
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "selection" ]
 	then
-		echo_verbose "For now I just delete everything in the dataset and fetch the new contents. this will be improved someday"
+		echo_verbose "For now I just delete everything in the dataset and fetch the new contents."
+		echo_verbose "You can override this with your own functions (see documentation)"
 		deletefiles `ls -1 $DATASET_LOCAL_FULL`
 		getfiles `ls -1 $REPOSITORY_FULL`
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob" ]
 	then	
 		wrap_rsync -avu '**.ddm' $REPOSITORY_FULL/ $DATASET_LOCAL_FULL
-	fi 
-	if [ $DATASET_LOCAL_TYPE == "direct" ]
+	elif [ $DATASET_LOCAL_TYPE == "direct" ]
 	then
 		do_callback docheckout
+	else
+		no_action
 	fi
 }
 
