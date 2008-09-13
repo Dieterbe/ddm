@@ -628,6 +628,24 @@ doflush ()
 }
 
 
+prerestore ()
+{
+	do_callback preupdate
+}
+
+
+dorestore ()
+{
+	do_callback doupdate
+}
+
+
+postrestore ()
+{
+	do_callback postupdate
+}
+
+
 doupdate ()
 {
 	if [ "$REPOSITORY_TYPE" == 'svn' -a ! $DATASET_LOCAL_TYPE == "direct" ]
