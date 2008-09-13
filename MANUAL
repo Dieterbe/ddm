@@ -17,7 +17,10 @@ sets of data on your systems.
 Some examples:
 * You have a series of TV episodes on your fileserver and you want the latest 5 that you haven't watched yet available on your laptop.
 * You have a giant music collection on your fileserver.  You want your favorite music (based on statistics from your media player) available on your laptop. 
-  Also, sometimes you rip (your own) cd's which must be properly tagged first and then added to your collection and stored on your mobile media player.
+  Also, sometimes you rip (your own) cd's or download music.  These files arrive in a specific folder (or even
+  a specific system).  You want to transfer them to another place/system with more disk space when the ripping/download is done.
+  Also the songs must be properly tagged before they can be integrated in your 'real' music collection.
+  You also want some way to automatically put your latest music on your portable media player.
 * After capturing new images with a digital camera you put them on your laptop first but you like to sync them to your file server frequently. 
   You don't need all the high-res images stored on your laptop.  They consume too much space, and you think syncing them to your server is a great backup.
   On the other hand you also want *some* of your high-res images (stored on the server) available for editing on the
@@ -38,8 +41,8 @@ and controlled.
 
 This is where DDM comes in.
 It's goal is to let you come up with specific work flows and usage patterns for your data.
-You tell ddm what tools to use ( rsync/(s)cp/svn/git/rm/... ) and how to use them, making managing your data much more peaceful and
-powerfull.  DDM is the Distributed Data Manager.
+You tell ddm what tools to use ( rsync/(s)cp/svn/git/rm/... ) and how to use them, making managing your data much more
+controlled and in shape.  DDM is the Distributed Data Manager.
 
 
 2) Disclaimer
@@ -60,19 +63,22 @@ These are the basic concepts.  They will be explained in the following chapters.
    - dataset name: The name of a dataset. (eg. 'pictures')
    - dataset type: How the dataset relates to it's corresponding repository. ( eg. 'selection')
  * actions: what to do with a dataset? (eg 'update')
-    * action: commit, update, checkout
+
+These concepts are further explained in the next chapters.
 
 
 4) Repositories
 
 A repository is a data store (on your 'server') 
+You usually have one repository per 'type of data' (programming projects, pictures, music, ... )
 It must have the 'perfect layout' and contain your files just the way you want them (eg songs properly tagged, files tightly organized etc)
 They must be kept clean.  If you are 'working' in them, you're doing it wrong.
  * repo type: The type of the repository. Currently there are 2 supported repository types:
    - svn: a normal subversion repository
    - vfs: a directory somewhere in the vfs hierarchy.  Any position in your VFS will do, and how it gets there is entirely up to you.
      (mounted directly, mounted nfs export, sshfs, autoFS, ... )  
- * repo name: A clear, no-nonsense, and preferably unique (in your 'world'. eg over all your ddm repositories) name
+ * repo name: A clear, no-nonsense, and preferably unique (in your 'world'. eg over all your ddm repositories)
+   name.  They are usually named after the specific type of data they contain. 'documents', 'music', 'projects', 'pictures',...  
 
 
 5) Datasets
@@ -117,14 +123,18 @@ This goes way beyond what a "working copy" in VCS lingo is to a repository.
    This file will be sourced by bash.
    This is not needed and sometimes even not possible (eg direct dataset for an unmounted filesystem)  
    These are the variables that can be specified, along with their default configuration:
-     DATASET_LOCAL='' #path to dataset locally (including type suffix if any)
-     DATASET_REMOTE='' #path to dataset remotely (or locally if network mount)
-     DATASET_PATH='' #just the path (until parent directory of dataset)
-     DATASET_DIR_NAME='' #like $DATASET_LOCAL but no path
+     DATASET_LOCAL        # path to dataset locally (including type suffix if any)
+     DATASET_REMOTE       # path to dataset remotely (or locally if network mount)
+     DATASET_PATH'        # just the path (until parent directory of dataset)
+     DATASET_DIR_NAME     # like $DATASET_LOCAL but no path
      DATASET_DIR_NAME_REL # identifier to dataset, taken against pwd (could be '.','..', nothing at all, dirname, full path, ..)
-     DATASET_NAME='' #like $DATASET_DIR_NAME but no type suffix
-     DATASET_TYPE=''
-     REPOSITORY_TYPE=''
+     DATASET_NAME         # like $DATASET_DIR_NAME but no type suffix
+     DATASET_TYPE         # dataset type (see above)
+     REPOSITORY_TYPE      # repository type
+   DATASET_DIR_NAME_REL is what is passed with the '-d' flag or implicitly assumed if not given (pwd).  Most variables can be derived from it, so you rarely need to specify these yourself!
+   Except REPOSITORY_TYPE and DATASET_TYPE (if it cannot be derived from the directory name of the dataset).
+   These are usually put in the .ddm file or specified as command-line options.
+
    You can also override the following callbacks:
      pre{checkout,commit,update,flush,backup,restore}
      do{checkout,commit,update,flush,backup,restore}
@@ -147,7 +157,7 @@ Some action names are bound to a specific dataset type, but you can create your 
 actions, override and even unset defaults.
 
 Not all actions have to be defined for all repository types.  That's why
-some entries are <dataset type>/<repository type>.
+some entries are <dataset type>/<repository type> in the next list.
 
 These are the default actions and to which corresponding dataset types they apply by default:
 (Note, these are all possible dataset types: blob, buffer, cache, copy, direct, extension, selection)

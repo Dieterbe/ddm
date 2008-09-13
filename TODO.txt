@@ -1,6 +1,5 @@
 = 0.4 =
  * doublecheck that directory naming with dataset type suffix is recommended but not necessary (a must for cache datasets)
- * make sure ddm behaves like docs say, or edit docs.
  * be compatible with xdg userdirectories (may work already, convert ~ and see if it still works)
    http://www.freedesktop.org/wiki/Software/xdg-user-dirs
 
