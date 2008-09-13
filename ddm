@@ -576,14 +576,14 @@ docheckout ()
 	then
 		echo_verbose "You are checking out a selection: i assume you will delete what you don't need afterwards?"
 		wrap_svn checkout $REPOSITORY_FULL $DATASET_LOCAL_FULL
-	elif [ "$REPOSITORY_TYPE" == 'svn' ] && [ $DATASET_LOCAL_TYPE == "copy" ]
+	elif [ "$REPOSITORY_TYPE" == 'svn' ] && [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob" ]
 	then
 		wrap_svn checkout $REPOSITORY_FULL $DATASET_LOCAL_FULL
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "selection" ]
 	then
 		echo_verbose "You are checking out a selection: either you delete what you don't need afterwards, or you override this function to do what you want"
 		wrap_rsync -avu '**.ddm' "$REPOSITORY_FULL/" "$DATASET_LOCAL_FULL"	
-	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "copy" ] 
+	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob"  ] 
 	then
 		wrap_rsync -avu '**.ddm' "$REPOSITORY_FULL/" "$DATASET_LOCAL_FULL" 
 	elif [ $DATASET_LOCAL_TYPE == "direct" ]
@@ -602,7 +602,7 @@ docommit ()
 		wrap_svn commit $DATASET_LOCAL_FULL -m "$MESSAGE"
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ]
 	then
-		if [ $DATASET_LOCAL_TYPE == "copy" ]
+		if [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob" ]
 		then
 			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 1 
 		elif [ $DATASET_LOCAL_TYPE == "buffer" ]
