@@ -1,11 +1,8 @@
 = 0.4 =
- * implement basic blob datatype that is rsync --delete -au (for now).
- * if selection system doesn't work very well, fall back to "rm and copy again" for now. improvements can come later.
  * doublecheck that directory naming with dataset type suffix is recommended but not necessary (a must for cache datasets)
  * make sure ddm behaves like docs say, or edit docs.
  * be compatible with xdg userdirectories (may work already, convert ~ and see if it still works)
    http://www.freedesktop.org/wiki/Software/xdg-user-dirs
- * implement flush for buffer
  * fix all actions/aliases
 
 
@@ -15,7 +12,9 @@
  * fix getopts so that 'ddm -a update -p -v .mozilla' (forgot -d) is spotted, and also stuff like -.mozilla or -mozilla should be spotted
  * 'wrap_rsync --delete? question' -> non-interactive rsyncing / commandline rsync parameter specifying? 
    important that we can do it sometimes and sometimes not, but not interactive please!
-
+ * good way to specify what we want for 'static' selections (eg not where we use slidewindow, get_exaile or other specific functions).
+   using a variable with a list of files/directories? find command?
+ * good way to update (static) selections. (eg don't delete everything and then get everything again)
 
 = Someday =
  * implement backup action for extension
