@@ -513,35 +513,28 @@ do_callback ()
 
 prebackup ()
 {
-	if [ $DATASET_LOCAL_TYPE == "selection" ]
+	if [ $DATASET_LOCAL_TYPE == "extension" ]
 	then
-		true
-	else
-		do_callback precommit
+		DATASET_LOCAL_REL=${DATASET_LOCAL_FULL}
+		REPOSITORY_FULL=${REPOSITORY_FULL}-extension
+		DATASET_LOCAL_NAME=`basename ${DATASET_LOCAL_FULL}`
+		DATASET_LOCAL_TYPE="copy"
+		check_repo_path "$REPOSITORY_FULL" "$REPOSITORY_TYPE"
 	fi
+
+	do_callback precommit
 }
 
 
 dobackup ()
 {
-	if [ $DATASET_LOCAL_TYPE == "selection" ]
-	then
-		true
-		#TODO: implement backup for selection
-	else
-		do_callback docommit
-	fi
+	do_callback docommit
 }
 
 
 postbackup ()
 {
-	if [ $DATASET_LOCAL_TYPE == "selection" ]
-	then
-		true
-	else
-		do_callback postcommit
-	fi
+	do_callback postcommit
 }
 
 
