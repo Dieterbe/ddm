@@ -15,7 +15,7 @@
    using a variable with a list of files/directories? find command?
  * good way to update (static) selections. (eg don't delete everything and then get everything again)
  * some error messages still need to go to stderr instead of stdout
-
+ * depenceny checking (svn,rsync,..)
 
 = Someday =
  * implement backup action for extension
