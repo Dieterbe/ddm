@@ -626,15 +626,22 @@ docommit ()
 
 doupdate ()
 {
-	if [ "$REPOSITORY_TYPE" == 'svn' ]
+	if [ "$REPOSITORY_TYPE" == 'svn' -a ! $DATASET_LOCAL_TYPE == "direct" ]
 	then
 		wrap_svn update $DATASET_LOCAL_FULL
-	elif [ "$REPOSITORY_TYPE" == 'vfs' ]
+	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "selection" ]
 	then
+		echo_verbose "For now I just delete everything in the dataset and fetch the new contents. this will be improved someday"
+		deletefiles `ls -1 $DATASET_LOCAL_FULL`
+		getfiles `ls -1 $REPOSITORY_FULL`
+	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob" ]
+	then	
 		wrap_rsync -avu '**.ddm' $REPOSITORY_FULL/ $DATASET_LOCAL_FULL
 	fi 
-
-
+	if [ $DATASET_LOCAL_TYPE == "direct" ]
+	then
+		do_callback docheckout
+	fi
 }
 
 
