@@ -3,7 +3,7 @@
  * make sure ddm behaves like docs say, or edit docs.
  * be compatible with xdg userdirectories (may work already, convert ~ and see if it still works)
    http://www.freedesktop.org/wiki/Software/xdg-user-dirs
- * fix all actions/aliases
+ * check/fix restore and update actions
 
 
 = 0.5 =
@@ -16,6 +16,7 @@
    using a variable with a list of files/directories? find command?
  * good way to update (static) selections. (eg don't delete everything and then get everything again)
  * some error messages still need to go to stderr instead of stdout
+
 
 = Someday =
  * implement backup action for extension
@@ -40,7 +41,7 @@
 
 
 = Undecided =
-
+ * commit a selection? could be usefull in some scenarios but how to implement ..
 
 = Ideas =
  * datasets that are multiple dataset types for different repo's (would this be useful?)

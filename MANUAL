@@ -148,14 +148,15 @@ actions, override and even unset defaults.
 Not all actions have to be defined for all dataset types.
 
 These are the default actions and to which corresponding repositories they apply by default:
+(Note, these are all possible dataset types: blob, buffer, cache, copy, direct, extension, selection)
  * backup:   backs up the state of the dataset (alias for commit for all datasets, also works for extensions )
- * checkout: set up the dataset ( selection, copy, blob, direct*)
- * commit:   commit the state/changes of the dataset to the repository ( buffer (alias for flush by default), copy, blob)
+ * checkout: set up the dataset ( blob, copy, direct/vfs*, selection)
+ * commit:   commit the state/changes of the dataset to the repository (blob, buffer/vfs (alias for flush by default), copy)
  * flush:    empty dataset and forward to repository if applicable ( buffer, cache )
  * restore:  restore the state of the dataset (alias for update for all datasets)
  * update:   update the files in the dataset ( selection, copy, blob, direct*)
 
-(*) : usually just mounts the corresponding filesystem
+(*) : not implemented yet.  will basically just mount the corresponding filesystem
 
 You can create your own actions in .ddm files or plugins if you would find that
 necessary.  Just create callback functions like {pre,do,post}<custom action name>.
