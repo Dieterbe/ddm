@@ -8,18 +8,17 @@
 # this plugin is useful for selection datasets : it gets songs from an exaile database based on a rating
 
 
-
+# exaile_strip
 # You can use this variable to strip paths from the filenames of the songs in your exaile database.
-# This is useful for example when you use a symlink that points to the actual location ( $DATASET_REMOTE ) in your exaile config.
-# You can override this in your ddmrc (so don't edit it here)
+# This is useful for example when you use a symlink that points to the actual location ( $REPOSITORY_FULL ) in your exaile config.
+# You can override this in your ddmrc or per-dataset .ddm (so don't edit it here)
 # syntax : exaile_strip="PATH1|PATH2" (will be feeded to sed)
-
 exaile_strip=""
 
-
-# path to exaile db
-
-exaile_db=~/.exaile/music.db #TODO: make this overridable by user (or get it in a clever way from exaile settings). not likely to differ though
+# exaile_db
+# this variable constitutes the path to your exaile database.
+# You can override this in your ddmrc or per-dataset .ddm (so don't edit it here)
+exaile_db=~/.exaile/music.db
 
 
 get_exaile ()
@@ -37,7 +36,7 @@ get_exaile ()
 		LIMIT=""
 	fi
 	
-	if [ which sqlite3 &> /dev/null -gt 0 ]
+	if ! which sqlite3 &> /dev/null
 	then
 		echo_die "sqlite3 command-line client must be installed to query the exaile database"
 	fi		
@@ -58,13 +57,14 @@ get_exaile ()
 	
 	#TODO : list current files. delete what is not in wantedfiles. get new and keep some
 	#recreate directory structure !
+	# this can probably be done by specifying all wanted files at once and rsync with --delete
 #	IFS_OLD=$IFS
 #	IFS=$'\n'
 #	for song in $wantedfiles
 #	do
 #		song=`echo $song | $strip`
 	
-#		echo "RSINC $DATASET_REMOTE/$song -> $DATASET_LOCAL/"
+#		echo "RSINC $REPOSITORY_FULL/$song -> $DATASET_LOCAL/"
 	#getfiles
 	#deletefiles 
 #	done
@@ -73,9 +73,9 @@ get_exaile ()
 	echo "$wantedfiles"
 	if [ -n "$exaile_strip" ]
 	then
-		strip="$DATASET_REMOTE|$exaile_strip"
+		strip="$REPOSITORY_FULL|$exaile_strip"
 	else
-		strip="$DATASET_REMOTE"
+		strip="$REPOSITORY_FULL"
 	fi
 	echo_debug "Stripping away paths : $strip"
 	wantedfiles=`sed -e 's#'$strip'##g' <<< "$wantedfiles"`
