@@ -607,7 +607,7 @@ docommit ()
 			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 1 
 		elif [ $DATASET_LOCAL_TYPE == "buffer" ]
 		then
-			wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 0 1
+			do_callback doflush
 		elif [ $DATASET_LOCAL_TYPE == "selection" ]
 		then
 			no_action "Maybe the user made changes to the small subset of data he has and wants to commit those..
@@ -621,6 +621,20 @@ docommit ()
 		fi
 	fi 
 
+}
+
+
+doflush ()
+{
+	if [ $DATASET_LOCAL_TYPE == "buffer" ]
+	then
+		 wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 0 1
+	elif [ $DATASET_LOCAL_TYPE == "cache" ]
+	then
+		deletefiles `ls -1 "$DATASET_LOCAL_FULL/"`
+	else
+		no_action
+	fi
 }
 
 

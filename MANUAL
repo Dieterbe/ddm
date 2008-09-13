@@ -151,7 +151,7 @@ These are the default actions and to which corresponding repositories they apply
  * backup:   backs up the state of the dataset (alias for commit for all datasets, also works for extensions )
  * checkout: set up the dataset ( selection, copy, blob, direct*)
  * commit:   commit the state/changes of the dataset to the repository ( buffer (alias for flush by default), copy, blob)
- * flush:    empty dataset and forward to repository if applicable ( buffer, cache, extension )
+ * flush:    empty dataset and forward to repository if applicable ( buffer, cache )
  * restore:  restore the state of the dataset (alias for update for all datasets)
  * update:   update the files in the dataset ( selection, copy, blob, direct*)
 
