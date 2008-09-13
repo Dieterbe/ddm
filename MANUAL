@@ -78,7 +78,8 @@ They must be kept clean.  If you are 'working' in them, you're doing it wrong.
    - vfs: a directory somewhere in the vfs hierarchy.  Any position in your VFS will do, and how it gets there is entirely up to you.
      (mounted directly, mounted nfs export, sshfs, autoFS, ... )  
  * repo name: A clear, no-nonsense, and preferably unique (in your 'world'. eg over all your ddm repositories)
-   name.  They are usually named after the specific type of data they contain. 'documents', 'music', 'projects', 'pictures',...  
+   name.  They are usually named after the specific type of data they contain.
+   ( eg 'documents', 'music', 'projects', 'pictures', ... )  
 
 
 5) Datasets
@@ -209,7 +210,20 @@ repositories.  Deleting datasets and setting up/managing/deleting repositories a
 
 8) Invocation
 
- See ddm -h
+  usage: ddm -a <action> [more options]
+         ddm -h
+
+  OPTIONS:
+     -a <action>         Action         (one of: backup checkout commit flush restore update)
+     -d <dataset-name>   Dataset name   (pointer to/name of directory, default is $PWD 
+     -t <dataset-type>   Dataset type   (one of: blob buffer cache copy direct extension selection, default is copy). Usually only needed explicitly for checkouts
+     -r <repo-type>      Repo type      (one of: vfs svn, default is vfs)
+     -m <message>        Message        (usually only used for commits in svn)
+     -p                  Pretend
+     -v                  Verbose
+     -h                  Show help      (this message)
+ 
+ See 'ddm -h' for the most up-to-date specifics.
 
 
 9) Exit codes
