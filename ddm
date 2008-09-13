@@ -444,7 +444,6 @@ wrap_rsync ()
 	# $3 source
 	# $4 destination
 	# $5 1 -> ask user for --delete (optional)
-	# $6 1 -> ask user to delete sucessfully rsynced files (optional)
 
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]
 	then
@@ -456,7 +455,6 @@ wrap_rsync ()
 	src=$3
 	dest=$4
 	ask_del=$5
-	ask_del2=$6
 	
 	# if source is a directory, append / if needed. (needed for rsync)
 	if [ -d "$src" -a ! grep '/$' > /dev/null <<< "$src" ]
@@ -482,19 +480,8 @@ wrap_rsync ()
 		[ "$PRETEND" -eq 0 ] &&	              rsync  "$opts"  --exclude="'$ignore'"  "$src"   "$dest"
 	fi
 	result=$?
-	if [ $result -eq 0 ] && [ "$PRETEND" -eq 0 ] 
-	then
-		echo_verbose "success"
-		if [ "$ask_del2" -eq 1 ]
-		then
-			true
-			#ask_user 'locally delete files that we successfully sent to server?' 1
-			#TODO: implement this, rsync has a param for that btw.
-		fi
-	elif [ "$PRETEND" -eq 0 ]
-	then
-		echo "failed"
-	fi
+	[ $result -eq 0 -a "$PRETEND" -eq 0 ] && echo_verbose "success"
+	[ $result -gt 0 -a "$PRETEND" -eq 0 ] && echo "failed"
 }
 
 
@@ -628,7 +615,10 @@ doflush ()
 {
 	if [ $DATASET_LOCAL_TYPE == "buffer" ]
 	then
-		 wrap_rsync -avu '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 0 1
+		#NOTE: --remove-source-files only removes files, not directories. this can be good (directories define structure) or bad (directories function as data)
+		wrap_rsync '-avu --remove-source-files' '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 0
+		#TODO: count/check unsuccessfully sent files
+		echo "Successfully transfered files deleted. Directories are kept; you must delete them yourself if you don't need them anymore"
 	elif [ $DATASET_LOCAL_TYPE == "cache" ]
 	then
 		deletefiles `ls -1 "$DATASET_LOCAL_FULL/"`
