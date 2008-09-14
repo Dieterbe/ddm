@@ -372,9 +372,9 @@ getfiles ()
 	do
 		# #TODO: probably need to strip local path before calling rsync
 		# dirname=`dirname "$file"`
-		# [ $dirname == '.' ] && wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/"
-		# [ $dirname != '.' ] && wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
-		wrap_rsync -avuq '**.ddm' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$file/"
+		# [ $dirname == '.' ] && wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/"
+		# [ $dirname != '.' ] && wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
+		wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$file/"
 	done
 }
 
@@ -485,7 +485,7 @@ wrap_svn ()
 wrap_rsync ()
 {
 	# $1 options (eg -avu)
-	# $2 ignore pattern (eg '**.ddm')
+	# $2 ignore pattern (eg '.ddm*')
 	# $3 source
 	# $4 destination
 	# $5 1 -> ask user for --delete (optional)
@@ -615,10 +615,10 @@ docheckout ()
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "selection" ]
 	then
 		echo_verbose "You are checking out a selection: either you delete what you don't need afterwards, or you override this function to do what you want"
-		wrap_rsync -au '**.ddm' "$REPOSITORY_FULL/" "$DATASET_LOCAL_FULL"	
+		wrap_rsync -au '.ddm*' "$REPOSITORY_FULL/" "$DATASET_LOCAL_FULL"	
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob"  ] 
 	then
-		wrap_rsync -au '**.ddm' "$REPOSITORY_FULL/" "$DATASET_LOCAL_FULL" 
+		wrap_rsync -au '.ddm*' "$REPOSITORY_FULL/" "$DATASET_LOCAL_FULL" 
 	elif [ $DATASET_LOCAL_TYPE == "direct" ]
 	then
 		no_action "TODO: check for mountpoints, maybe parents and try to mount"
@@ -644,7 +644,7 @@ docommit ()
 	then
 		if [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob" ]
 		then
-			wrap_rsync -au '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 1 
+			wrap_rsync -au '.ddm*' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 1 
 		elif [ $DATASET_LOCAL_TYPE == "buffer" ]
 		then
 			do_callback doflush
@@ -673,7 +673,7 @@ doflush ()
 	if [ $DATASET_LOCAL_TYPE == "buffer" ]
 	then
 		#NOTE: --remove-source-files only removes files, not directories. this can be good (directories define structure) or bad (directories function as data)
-		wrap_rsync '-au --remove-source-files' '**.ddm' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 0
+		wrap_rsync '-au --remove-source-files' '.ddm*' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 0
 		failures=`find $DATASET_LOCAL_FULL -type f | grep -v "$DATASET_LOCAL_FULL/.ddm" | wc -l`
 		echo "Warning: still $failures un(successfully) flushed files in the buffer" >&2
 		echo "Successfully transfered files deleted. Directories are kept; you must delete them yourself if you don't need them anymore"
@@ -726,7 +726,7 @@ doupdate ()
 		getfiles `ls -1 $REPOSITORY_FULL`
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob" ]
 	then	
-		wrap_rsync -au '**.ddm' $REPOSITORY_FULL/ $DATASET_LOCAL_FULL
+		wrap_rsync -au '.ddm*' $REPOSITORY_FULL/ $DATASET_LOCAL_FULL
 	elif [ $DATASET_LOCAL_TYPE == "direct" ]
 	then
 		do_callback docheckout
