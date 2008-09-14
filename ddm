@@ -102,6 +102,16 @@ echo_debug ()
 }
 
 
+echo_debug_vars ()
+{
+	echo_debug "	Variable dump:
+		REPOSITORY_FULL $REPOSITORY_FULL [ REPOSITORY_TYPE $REPOSITORY_TYPE ]	
+		DATASET_LOCAL_REL $DATASET_LOCAL_REL - DATASET_LOCAL_FULL $DATASET_LOCAL_FULL - DATASET_LOCAL_PARENT_FULL $DATASET_LOCAL_PARENT_FULL
+		DATASET_LOCAL_BASE $DATASET_LOCAL_BASE - DATASET_LOCAL_NAME $DATASET_LOCAL_NAME [ DATASET_LOCAL_TYPE $DATASET_LOCAL_TYPE ]"      
+
+}
+
+
 echo_die ()
 {
 	echo "$1" >&2
@@ -256,16 +266,51 @@ set_dataset_info()
 	[ "$REPOSITORY_TYPE" == 'svn' ] && REPOSITORY_FULL=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_LOCAL_NAME}${SVN_SUFFIX}"
 	[ "$REPOSITORY_TYPE" == 'vfs' ] && REPOSITORY_FULL=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_LOCAL_NAME}${VFS_SUFFIX}"
 	
-	echo_debug "set_dataset_info related variables:
-DATASET_LOCAL_REL $DATASET_LOCAL_REL
-REPOSITORY_FULL $REPOSITORY_FULL
-REPOSITORY_TYPE $REPOSITORY_TYPE
-DATASET_LOCAL_FULL $DATASET_LOCAL_FULL
-DATASET_LOCAL_PARENT_FULL $DATASET_LOCAL_PARENT_FULL
-DATASET_LOCAL_BASE $DATASET_LOCAL_BASE
-DATASET_LOCAL_NAME $DATASET_LOCAL_NAME
-DATASET_LOCAL_TYPE $DATASET_LOCAL_TYPE"      
-	                                                        
+	echo_debug "set_dataset_info finished"
+	echo_debug_vars	                                                        
+}
+
+
+ #
+ # VALIDATORS.  VALIDATE STUFF
+ #
+
+validate_all ()
+{
+	validate_dataset
+	validate_repository
+	validate_action
+}
+
+
+validate_dataset ()
+{
+	# DEFAULT_DATASET_TYPE no validation needed. user can't override
+	check_is_in "$DATASET_LOCAL_TYPE" "$ALLOWED_DATASET_TYPES" 'dataset type' 2
+	
+	if [ $REPOSITORY_TYPE == 'svn' ] && [ $DATASET_LOCAL_TYPE == 'blob' -o $DATASET_LOCAL_TYPE == 'direct' ]
+	then
+		echo "A $DATASET_LOCAL_TYPE dataset for a svn repository? That wouldn't make much sense now would it?" 2
+	fi
+
+}
+
+
+validate_repository ()
+{ 
+	check_is_in "$DEFAULT_REPOSITORY_TYPE" "$ALLOWED_REPOSITORY_TYPES" 'repo type' 3
+	check_is_in "$REPOSITORY_TYPE"         "$ALLOWED_REPOSITORY_TYPES" 'repo type' 3
+}
+
+
+validate_action ()
+{
+	if [ -z "$ACTION" ]
+	then
+		echo_die "You must specify an action with -a <action>.  $ACTION_NAME_HELPSTRING" 4
+	fi
+
+	check_is_in "$ACTION" "$ALLOWED_ACTIONS" action 4
 }
 
 
@@ -769,14 +814,14 @@ DATASET_TYPE_HELPSTRING="(one of: $ALLOWED_DATASET_TYPES, default is $DEFAULT_DA
 REPOSITORY_TYPE_HELPSTRING="(one of: $ALLOWED_REPOSITORY_TYPES, default is $DEFAULT_REPOSITORY_TYPE)"
 MESSAGE_HELPSTRING="(usually only used for commits in svn)"
 	
-check_is_in "$DEFAULT_REPOSITORY_TYPE" "$ALLOWED_REPOSITORY_TYPES" 'repo type' 3
-
 
 DATASET_LOCAL_REL=$PWD
 DATASET_LOCAL_TYPE=$DEFAULT_DATASET_TYPE
 REPOSITORY_TYPE=$DEFAULT_REPOSITORY_TYPE
 MESSAGE=''
 PRETEND=0
+
+validate_repository
 
 while getopts “:a:d:t:r:m:vhp” OPTION
 do
@@ -786,8 +831,8 @@ do
 		then
 			echo_die "To use -a, specify an action as argument.  $ACTION_HELPSTRING" 5
 		fi
-		check_is_in "$OPTARG" "$ALLOWED_ACTIONS" action 4 
 		ACTION=$OPTARG
+		validate_action
 		;;
 	d)
 		if [ -z "$OPTARG" ]
@@ -801,16 +846,16 @@ do
 		then
 			echo_die "To use -t, specify a dataset-type as argument.  $DATASET_TYPE_HELPSTRING" 5
 		fi
-		check_is_in "$OPTARG" "$ALLOWED_DATASET_TYPES" 'dataset type' 2
 		DATASET_LOCAL_TYPE=$OPTARG
+		validate_dataset
 		;;
 	r)
 		if [ -z "$OPTARG" ]
 		then
 			echo_die "To use -r, specify a repo-type as argument.  $REPOSITORY_TYPE_HELPSTRING" 5
 		fi
-		check_is_in "$OPTARG" "$ALLOWED_REPOSITORY_TYPES" 'repo type' 3
 		REPOSITORY_TYPE=$OPTARG
+		validate_repository
 		;;
 	m)
 		if [ -z "$OPTARG" ]
@@ -839,18 +884,8 @@ done
 #We now know if we want verbose or not, so we can flush pending output from before we parsed the arguments
 echo_verbose $echo_verbose_buffer
 
-# CHECK NEEDED OPTIONS
-# If no action is specified, calling ddm is useless.
-if [ -z "$ACTION" ]
-then
-       echo_die "You must specify an action with -a <action>.  $ACTION_NAME_HELPSTRING" 4
-fi
-# Check if the dataset is defined for the repository type.
-if [ $REPOSITORY_TYPE == 'svn' ] && [ $DATASET_LOCAL_TYPE == 'blob' -o $DATASET_LOCAL_TYPE == 'direct' ]
-then
-	echo "A $DATASET_LOCAL_TYPE dataset for a svn repository? That wouldn't make much sense now would it?" 2
-fi
-
+echo_debug "Validate_all after arguments processing"
+validate_all
 
 set_dataset_info
 
@@ -866,6 +901,10 @@ then
 		echo_verbose "Included $DATASET_LOCAL_FULL/.ddm" 
 	fi
 fi
+
+echo_debug_vars
+echo_debug "Validate_all after set_dataset_info + .ddm loading"
+validate_all
 
 PWD_AFTER=`pwd`
 [ "$PWD_AFTER" != "$PWD" ] && echo_die "Please don't cd in your .ddm scripts.  PWD must remain the same!" 2   

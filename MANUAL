@@ -246,7 +246,8 @@ repositories.  Deleting datasets and setting up/managing/deleting repositories a
    * workers.    called by callbacks or other workers.  Can be overridden/extended with plugins. (eg no_action, wrap_rsync, getfiles, delefiles, keepfiles, ...)
      - wrappers.   special kind of worker functions for a specific purpose (eg wrap_rsync, wrap_keep). pretend-mode switching happens here.
      - non-wrappers (eg getfiles, deletefiles) call wrappers for 'dangerous' things, so non-wrappers don't need to implement any pretend-mode checking
-  
+   * validators.  used for validating datasets, repositories, actions, ...
+
   10.2) Notes
  
   * All functions except wrappers expect relative paths, where the root is the dataset/repository directory.
