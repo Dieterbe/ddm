@@ -40,6 +40,7 @@ get_exaile ()
 	then
 		echo_die "sqlite3 command-line client must be installed to query the exaile database"
 	fi		
+	#NOTE: the same track could be stored in multiple paths, but if at least one of them has a rating, we're happy
 	
 	query="SELECT paths.name FROM tracks JOIN paths on tracks.path = paths.id\
 	       WHERE tracks.user_rating != 0\
@@ -64,7 +65,7 @@ get_exaile ()
 #	do
 #		song=`echo $song | $strip`
 	
-#		echo "RSINC $REPOSITORY_FULL/$song -> $DATASET_LOCAL/"
+#		echo "RSYNC $REPOSITORY_FULL/$song -> $DATASET_LOCAL_FULL/"
 	#getfiles
 	#deletefiles 
 #	done
