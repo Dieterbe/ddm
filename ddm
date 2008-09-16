@@ -62,7 +62,7 @@ ask_user ()
 
 echo_pretend_verbose () 
 {
-	if [ "$PRETEND" -eq 1 ]
+	if [ "$PRETEND" == '1' ]
 	then
 		echo -e "$@ (pretend)"
 	else
@@ -73,7 +73,7 @@ echo_pretend_verbose ()
 
 echo_pretend ()
 {
-	if [ "$PRETEND" -eq 1 ]
+	if [ "$PRETEND" == '1' ]
 	then
 		echo -e "$@ (pretend)"
 	fi
@@ -176,7 +176,7 @@ check_repo_path ()
 	
 	if [ "$repotype" == 'svn' ]
 	then
-		if [ "$IGNORE_DATASET_REMOTE_SVN" -eq 0 ]
+		if [ "$IGNORE_DATASET_REMOTE_SVN" == '0' ]
 		then
 			output=`wrap_svn info $path 2>&1`
 			if [ $? -gt 0 ]
@@ -208,7 +208,7 @@ check_dataset_path ()
 			echo_die "$output" $exitcode
 		fi
 
-		if [ "$IGNORE_DATASET_REMOTE_SVN" -eq 0 ]
+		if [ "$IGNORE_DATASET_REMOTE_SVN" == '0' ]
 		then
 			remote=`echo "$output" | grep 'URL: ' | awk '{print $2}'`
 			if [ "$remote" != "$REPOSITORY_FULL" ]
@@ -420,7 +420,7 @@ wrap_rm ()
 
 	if [ -f "$file" ]
 	then
-		if [ "$PRETEND" -eq 0 ]
+		if [ "$PRETEND" == '0' ]
 		then
 			echo_verbose -n "found . removing... "
 			rm "$2" "$file"
@@ -455,7 +455,7 @@ wrap_svn ()
 	then
 		echo_die 'internal error: insufficient parameters to svn wrapper' 100
 	fi
-	if [ "$PRETEND" -eq 1 -a "$1" != info ] #svn info doesn't need to be pretended.  we can (and should) safely do this.
+	if [ "$PRETEND" == '1' -a "$1" != info ] #svn info doesn't need to be pretended.  we can (and should) safely do this.
 	then
 		echo_pretend "svn $@"
 		[ "$1" == 'checkout' ] && echo_pretend "svn propedit svn:ignore . --non-interactive --editor-cmd 'echo .ddm >>'"
@@ -508,7 +508,7 @@ wrap_rsync ()
 	fi
 	
 	# if ddm is in verbose mode, add -v flag for rsync
-	if [ "$VERBOSE" -eq 1 ]
+	if [ "$VERBOSE" == '1' ]
 	then
 		extra_opts="-v"
 	else
@@ -521,20 +521,20 @@ wrap_rsync ()
 		echo_verbose -n " * $src ... " 
 		if [ "$user_response" == 'y' ]
 		then
-			[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync '$opts' '$extra_opts' --delete --exclude='"'$ignore'"' "'$src'" "'$dest'"'
-			[ "$PRETEND" -eq 0 ] &&               rsync  $opts   $extra_opts  --delete --exclude="'$ignore'"  "$src"   "$dest"
+			[ "$PRETEND" == '1' ] && echo_pretend 'rsync '$opts' '$extra_opts' --delete --exclude='"'$ignore'"' "'$src'" "'$dest'"'
+			[ "$PRETEND" == '0' ] &&               rsync  $opts   $extra_opts  --delete --exclude="'$ignore'"  "$src"   "$dest"
 		else
-			[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync '$opts' '$extra_opts' --exclude='"'$ignore'"' "'$src'" "'$dest'"'
-			[ "$PRETEND" -eq 0 ] &&               rsync  $opts   $extra_opts --exclude="'$ignore'"  "$src"   "$dest"
+			[ "$PRETEND" == '1' ] && echo_pretend 'rsync '$opts' '$extra_opts' --exclude='"'$ignore'"' "'$src'" "'$dest'"'
+			[ "$PRETEND" == '0' ] &&               rsync  $opts   $extra_opts --exclude="'$ignore'"  "$src"   "$dest"
 		fi
 	else
 		echo_verbose -n " * $src ... " 
-		[ "$PRETEND" -eq 1 ] && echo_pretend 'rsync '$opts' '$extra_opts' --exclude='"'$ignore'"' "'$src'" "'$dest'"'
-		[ "$PRETEND" -eq 0 ] &&	              rsync  $opts   $extra_opts  --exclude="'$ignore'"  "$src"   "$dest"
+		[ "$PRETEND" == '1' ] && echo_pretend 'rsync '$opts' '$extra_opts' --exclude='"'$ignore'"' "'$src'" "'$dest'"'
+		[ "$PRETEND" == '0' ] &&	              rsync  $opts   $extra_opts  --exclude="'$ignore'"  "$src"   "$dest"
 	fi
 	result=$?
-	[ $result -eq 0 -a "$PRETEND" -eq 0 ] && echo_verbose "success"
-	[ $result -gt 0 -a "$PRETEND" -eq 0 ] && echo "failed"
+	[ $result -eq 0 -a "$PRETEND" == '0' ] && echo_verbose "success"
+	[ $result -gt 0 -a "$PRETEND" == '0' ] && echo "failed"
 }
 
 
