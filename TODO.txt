@@ -1,9 +1,8 @@
 = 0.4 =
- * doublecheck that directory naming with dataset type suffix is recommended but not necessary (a must for cache datasets)
  * be compatible with xdg userdirectories (may work already, convert ~ and see if it still works)
    http://www.freedesktop.org/wiki/Software/xdg-user-dirs
  * test slidewindow
- * if this list is empty, update manual header + release
+ * if this list is empty, update manual header, make 0.4 branch + release
 
 
 = 0.5 =
@@ -48,3 +47,8 @@
 = Ideas =
  * datasets that are multiple dataset types for different repo's (would this be useful?)
  * repositories that are a dataset for another repository (would this be useful?) 
+ * several repositories for same media but different state (eg dirty and clean). eg:
+   - audio-buffer dataset on client host with new, untagged media
+   - "dirty audio" repo to push the audio-buffer to
+   - "clean audio" repo to push clean (tagged) audio to from the dirty repo
+   Other dirty repositories: eg 'Desktop', to backup up your Desktop temporarily, before moving data in appropriate places.
