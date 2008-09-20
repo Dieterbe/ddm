@@ -514,23 +514,21 @@ wrap_rsync ()
 	else
 		extra_opts=''
 	fi
-	
+	#NOTE: rsync manpage uses both --exclude='' and --exclude '' forms.  I guess both work
+	user_response=
 	if [ "$ask_del" == '1' ]
 	then
 		ask_user 'delete extraneous files from dest dirs? (rsync --delete)' 1
-		echo_verbose -n " * $src ... " 
-		if [ "$user_response" == 'y' ]
-		then
-			[ "$PRETEND" == '1' ] && echo_pretend 'rsync '$opts' '$extra_opts' --delete --exclude='"'$ignore'"' "'$src'" "'$dest'"'
-			[ "$PRETEND" == '0' ] &&               rsync  $opts   $extra_opts  --delete --exclude="'$ignore'"  "$src"   "$dest"
-		else
-			[ "$PRETEND" == '1' ] && echo_pretend 'rsync '$opts' '$extra_opts' --exclude='"'$ignore'"' "'$src'" "'$dest'"'
-			[ "$PRETEND" == '0' ] &&               rsync  $opts   $extra_opts --exclude="'$ignore'"  "$src"   "$dest"
-		fi
+	fi
+
+	echo_verbose -n " * $src ... "
+	if [ "$user_response" == 'y' ]
+	then
+		[ "$PRETEND" == '1' ] && echo_pretend "rsync $opts $extra_opts --delete --exclude  $ignore  $src $dest"
+		[ "$PRETEND" == '0' ] &&               rsync $opts $extra_opts --delete --exclude "$ignore" $src $dest
 	else
-		echo_verbose -n " * $src ... " 
-		[ "$PRETEND" == '1' ] && echo_pretend 'rsync '$opts' '$extra_opts' --exclude='"'$ignore'"' "'$src'" "'$dest'"'
-		[ "$PRETEND" == '0' ] &&	              rsync  $opts   $extra_opts  --exclude="'$ignore'"  "$src"   "$dest"
+		[ "$PRETEND" == '1' ] && echo_pretend "rsync $opts $extra_opts          --exclude  $ignore  $src $dest"
+		[ "$PRETEND" == '0' ] &&               rsync $opts $extra_opts          --exclude "$ignore" $src $dest
 	fi
 	result=$?
 	[ $result -eq 0 -a "$PRETEND" == '0' ] && echo_verbose "success"
@@ -920,6 +918,11 @@ else
 fi	
 
 echo_verbose "action $ACTION on dataset $DATASET_LOCAL_FULL ( $DATASET_LOCAL_TYPE ), repo $REPOSITORY_FULL ( $REPOSITORY_TYPE ) [ DEBUG $DEBUG - PRETEND $PRETEND - VERBOSE $VERBOSE ]"
+
+if [ "$PRETEND" == '1' ]
+then
+	echo_verbose "Warning: do not just copy paste the given commands into a shell.  your shell will interpret and glob them and they might not work as expected.  just remove the -p flag to execute."
+fi
 
 for prefix in pre 'do' post
 do

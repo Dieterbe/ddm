@@ -3,7 +3,6 @@
  * be compatible with xdg userdirectories (may work already, convert ~ and see if it still works)
    http://www.freedesktop.org/wiki/Software/xdg-user-dirs
  * test slidewindow
- * fix .ddm ignore (.ddm must be ignored and also .ddm~ ). see https://bugzilla.samba.org/show_bug.cgi?id=5759
  * if this list is empty, update manual header + release
 
 
