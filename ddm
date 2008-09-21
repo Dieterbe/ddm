@@ -333,9 +333,9 @@ deletefiles ()
 		file=`echo $file | sed 's/ $//'`
 		if [ "$file" != '..' ] && [ "$file" != '.' ]
 		then
-                        file=`echo $file | xargs echo` #remove escape characters.. dont know if this is the best way
-			wrap_rm "$DATASET_LOCAL_FULL/$file"
-                fi
+			file=`echo $file | xargs echo` #remove escape characters.. dont know if this is the best way
+			wrap_rm "$DATASET_LOCAL_FULL/$file" -r
+		fi
 	done
 }	
 
@@ -448,7 +448,7 @@ wrap_rm ()
 	
 	echo_verbose -n " * $file... "
 
-	if [ -f "$file" ]
+	if [ -e "$file" ]
 	then
 		if [ "$PRETEND" == '0' ]
 		then
@@ -463,7 +463,7 @@ wrap_rm ()
 		else
 			echo_verbose -n "found. pretending remove... "
 			echo_pretend -n "rm $2 $file"
-			if [ -w "$file" ]
+			if [ -w "$file" ] && [[ ! -d "$file" || "$2" = *r* ]]
 			then
 				echo_verbose -n " should work"
 			else
