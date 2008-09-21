@@ -677,7 +677,7 @@ doflush ()
 		echo "Successfully transfered files deleted. Directories are kept; you must delete them yourself if you don't need them anymore"
 	elif [ $DATASET_LOCAL_TYPE == "cache" ]
 	then
-		deletefiles `ls -1 "$DATASET_LOCAL_FULL/"`
+		deletefiles "`ls -1 $DATASET_LOCAL_FULL/`"
 	else
 		no_action
 	fi
@@ -720,8 +720,8 @@ doupdate ()
 	then
 		echo_verbose "For now I just delete everything in the dataset and fetch the new contents."
 		echo_verbose "You can override this with your own functions (see documentation)"
-		deletefiles `ls -1 $DATASET_LOCAL_FULL`
-		getfiles `ls -1 $REPOSITORY_FULL`
+		deletefiles "`ls -1 $DATASET_LOCAL_FULL`"
+		getfiles "`ls -1 $REPOSITORY_FULL`"
 	elif [ "$REPOSITORY_TYPE" == 'vfs' ] && [ $DATASET_LOCAL_TYPE == "copy" -o $DATASET_LOCAL_TYPE == "blob" ]
 	then	
 		wrap_rsync -au '.ddm*' $REPOSITORY_FULL/ $DATASET_LOCAL_FULL
