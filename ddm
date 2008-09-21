@@ -435,10 +435,11 @@ wrap_rm ()
 			echo_pretend -n "rm $2 $file"
 			if [ -w "$file" ]
 			then
-				echo_verbose " should work"
+				echo_verbose -n " should work"
 			else
-				echo_verbose " will fail (file not writable)"
+				echo_verbose -n " will fail (file not writable)"
 			fi
+			echo
 		fi
 	else
 		echo_verbose "not found"
