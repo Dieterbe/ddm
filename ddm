@@ -324,7 +324,7 @@ deletefiles ()
 {
 	deletelist="$1"
 	deletelistsize=`grep -cv '^$' <<< "$deletelist"`
-	echo_debug "deletelist (size : $deletelistsize) : $deletelist"
+	echo_debug "deletelist (size: $deletelistsize) : $deletelist"
 
 	echo_verbose "Deleting old files ... ($deletelistsize items)."
 	IFS=$'\n'
@@ -346,7 +346,7 @@ keepfiles ()
 {
 	keeplist="$1"
 	keeplistsize=`grep -cv '^$' <<< "$keeplist"`
-	echo_debug "keeplist (size : $keeplistsize) : $keeplist"
+	echo_debug "keeplist (size: $keeplistsize) : $keeplist"
 	
 	echo_verbose "Keeping these files... ($keeplistsize items)."
         IFS=$'\n'
@@ -364,7 +364,7 @@ getfiles ()
 {
 	getlist="$1"
 	getlistsize=`grep -cv '^$' <<< "$getlist"`
-	echo_debug "getlist (size :$getlistsize) : $getlist"
+	echo_debug "getlist (size: $getlistsize) : $getlist"
 	
 	echo_verbose "Copying new files  ... ($getlistsize items)."
 	IFS=$'\n'
