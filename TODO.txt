@@ -1,6 +1,10 @@
 = 0.4 =
- * test slidewindow
+ * test & improve slidewindow.  check we can strip away parts from grepstring (such as 'series' if you cd directly)
  * if this list is empty, update manual header, make 0.4 branch + release
+ * write examples: eg following multiple series checkout/update/..., audio-buffer, 
+   documents-buffer + documents-selection with specific list of documents we want or a pattern for --include in rsync
+ * when dir contains only dataset type (eg audio/{selection,..}, like with userdirs) set_dataset_info is probably buggy! +
+   other TODO in set_dataset_info (see source). 
 
 
 = 0.5 =
@@ -14,6 +18,10 @@
  * good way to update (static) selections. (eg don't delete everything and then get everything again)
  * some error messages still need to go to stderr instead of stdout
  * dependency checking (svn,rsync,..) but only when needed (wrap_<foo> seems like a good place)
+ * if something fails anywhere, don't echo_verbose, but echo (to stderr).
+   in some cases abort operation or ask user if he wants to continue. add flag to never need manual user input.
+ * allow defining some parameters in .ddm that will be used by ddm so that overriding callbacks is seldomly needed (eg make ddm more framework-esque)
+ * make slidewindow work for any arbitrary path position. (eg slide over files, but also over directories contain files, or those dirs parents, etc)
 
 
 = Someday =
