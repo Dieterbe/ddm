@@ -422,7 +422,7 @@ wrap_rm ()
 	then
 		if [ "$PRETEND" == '0' ]
 		then
-			echo_verbose -n "found . removing... "
+			echo_verbose -n "found. removing... "
 			rm "$2" "$file"
 			if [ $? -eq 0 ]
 			then
@@ -431,7 +431,7 @@ wrap_rm ()
 				echo_verbose "failed"
 			fi
 		else
-			echo_verbose -n "found. pretending remove..."
+			echo_verbose -n "found. pretending remove... "
 			echo_pretend 'rm "'$2'" "'$file'"'
 			if [ -w "$file" ]
 			then
