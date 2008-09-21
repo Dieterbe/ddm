@@ -405,6 +405,36 @@ wrap_keep ()
 }
 
 
+wrap_cd ()
+{
+	# 1$ path
+	if [ -z "$1" ]
+	then
+		echo_die 'internal error: insufficient parameters to cd wrapper' 100
+	fi
+
+	path=$1
+	echo_pretend_verbose -n "Cd'ing into $path ... "
+	if [ "$PRETEND" == '0' ]
+	then
+		cd $path
+		if [ $? -eq 0 ]
+		then
+			echo_verbose -n "success"
+		else
+			echo -n "failed" >&2
+		fi
+	else
+		if [ -d "$path" -a -r "$path" -a -x "$path" ]
+		then
+			echo_verbose -n " should work"
+		else
+			echo_verbose -n " will fail"
+		fi
+	fi
+	echo
+}
+
 wrap_rm ()
 {
 	# $1 filename
@@ -551,7 +581,9 @@ do_callback ()
 	if type -t $1 | grep function >/dev/null
 	then
 		echo_verbose "callback $1 defined. executing..."
+		PWD_BACKUP=`pwd`
 		$1
+		cd $PWD_BACKUP
 	else
 		echo_verbose "callback $1 not defined. skipping."
 	fi
