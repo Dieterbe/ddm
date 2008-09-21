@@ -672,7 +672,7 @@ doflush ()
 	then
 		#NOTE: --remove-source-files only removes files, not directories. this can be good (directories define structure) or bad (directories function as data)
 		wrap_rsync '-au --remove-source-files' '.ddm*' "$DATASET_LOCAL_FULL/" "$REPOSITORY_FULL" 0
-		failures=`find $DATASET_LOCAL_FULL -type f | grep -v "$DATASET_LOCAL_FULL/.ddm" | wc -l`
+		failures=`find $DATASET_LOCAL_FULL -type f | grep -cv "$DATASET_LOCAL_FULL/.ddm"`
 		echo "Warning: still $failures un(successfully) flushed files in the buffer" >&2
 		echo "Successfully transfered files deleted. Directories are kept; you must delete them yourself if you don't need them anymore"
 	elif [ $DATASET_LOCAL_TYPE == "cache" ]
