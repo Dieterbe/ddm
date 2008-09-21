@@ -432,12 +432,12 @@ wrap_rm ()
 			fi
 		else
 			echo_verbose -n "found. pretending remove... "
-			echo_pretend 'rm "'$2'" "'$file'"'
+			echo_pretend -n 'rm "'$2'" "'$file'"'
 			if [ -w "$file" ]
 			then
-				echo_verbose "should work"
+				echo_verbose " should work"
 			else
-				echo_verbose "will fail (file not writable)"
+				echo_verbose " will fail (file not writable)"
 			fi
 		fi
 	else
