@@ -1,6 +1,4 @@
 = 0.4 =
- * be compatible with xdg userdirectories (may work already, convert ~ and see if it still works)
-   http://www.freedesktop.org/wiki/Software/xdg-user-dirs
  * test slidewindow
  * if this list is empty, update manual header, make 0.4 branch + release
 
@@ -41,7 +39,7 @@
 
 
 = Undecided =
- * commit a selection? could be usefull in some scenarios but how to implement ..
+ * commit a selection? could be useful in some scenarios but how to implement ..
 
 
 = Ideas =
