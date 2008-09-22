@@ -12,7 +12,6 @@
 # (as is usually the case, eg a specific series inside a video repository).  This is used for rsyncing, not for grepping.  Use '' to omit. (and work in the root of the dataset/repository)
 # Note that the subpath does not need to exist (yet) in the dataset.  It must exist in the repository however.
 
-
 slidewindow ()
 {
 	# $1 subpath
@@ -55,33 +54,32 @@ slidewindow ()
 	usedlist_full=`grep "$GREPSTRING" ~/.bash_history | grep -v '*' | grep -v '?' | grep -v grep | uniq | awk '{print $NF }'` #note: the _full aspect can be relative path, absolute path, ... !
 	usedlistsize=` grep "$GREPSTRING" ~/.bash_history | grep -v '*' | grep -v '?' | grep -v grep | uniq | wc -l`
 	usedlist_base=
-	for used in `echo "$usedlist_full"`; do usedlist_base="$usedlist_base"$'\n'"`basename $used`"; done 
-
+	for used in `echo "$usedlist_full"`; do [ -z "$usedlist_base" ] && usedlist_base="`basename $used`" || usedlist_base="$usedlist_base"$'\n'"`basename $used`"; done
 	echo_debug "currentlist_base: $currentlist_base"
 	echo_debug "currentlistsize: $currentlistsize"
 	echo_debug "usedlist_base : $usedlist_base"
 	echo_debug "usedlistsize: $usedlistsize"
-	#TODO: check if usedlist populates well, and newlines work
-	#TODO first: get 10 new files if we didn't watch any
 	#TODO: where does the '1' file come from?
 	if [ -z "$usedlist_base" ]
 	then
+		echo_debug "Branch: no used files"
 		echo_verbose "Could not find any matching entries in your history.  I will only add stuff (maybe), and delete nothing"
 		deletelist_base=''
 		keeplist_base=`ls -1 "$DATASET_LOCAL_FULL/$SUBPATH" 2>/dev/null`
 		last=''
 		if [ "$GET_NEW" -gt $currentlistsize ]
 		then
+			echo_debug "Branch: $GET_NEW -gt  $currentlistsize"
 			# we can add some files because no files are consumed and we want more files then we currently have
-			if [ "$currentlistsize" > 1 ]
+			if [ "$currentlistsize" -gt 1 ]
 			then
+				echo_debug "Branch: $currentlistsize -gt 1"
 				todo=$(($GET_NEW - $currentlistsize))
-				echo_verbose "Files in dataset: $currentlistsize, wanted new files : $GET_NEW. I will fetch $todo new files."
+				echo_verbose "Files in dataset: $currentlistsize, wanted new files : $GET_NEW. I will fetch $todo new files (if available)."
 				last=`echo "$currentlist_base" | $sort | tail -n 1`
 				if [ -n "$last" ] 
 				then
 					# we know what file was consumed last.  get the $GET_NEW ones after it
-
 					tmplist_base=`ls -1 "$REPOSITORY_FULL/$SUBPATH" | $SORT | grep "$last" -A $GET_NEW`
 					if [ $? -gt 0 ]
 					then
@@ -89,40 +87,43 @@ slidewindow ()
 					fi
 					getlist_base=`echo "$tmplist_base" | tail -n +2`
 				else
-					# wo don't know which file was consumed last.  get the $GET_NEW first
-
+					# we don't know which file was consumed last.  get/sync the $GET_NEW first
 					getlist_base=`ls -1 "$REPOSITORY_FULL/$SUBPATH" | $SORT | head -n "$GET_NEW"`
 				fi
 			else
+				echo_debug "Branch: $currentlistsize not -gt 1"
 				# also get the $GET_NEW first
 				getlist_base=`ls -1 "$REPOSITORY_FULL/$SUBPATH" | $SORT | head -n "$GET_NEW"`
 			fi
 		else
+			echo_debug "Branch: $GET_NEW not -gt  $currentlistsize"
 			getlist_base=''
 		fi
-	
 	else
+		echo_debug "Branch: used files"
 		deletelist_base=`echo "$usedlist_base" | head --lines=-$KEEP_OLD`
 		keeplist_base=`  echo "$usedlist_base" | tail -n $KEEP_OLD`
-		
 		last=`echo "$usedlist_base" | tail -n 1 | xargs echo`
 		last=`basename "$last"` #*after* this entry the entries start that we want. we know that -z "last" cause we checked $usedlist_base
-		tmplist_base=`ls -1 "$REPOSITORY_FULL" | $SORT | grep -A $GET_NEW "$last"`
+		tmplist_base=`ls -1 "$REPOSITORY_FULL/$SUBPATH" | $SORT | grep -A $GET_NEW "$last"`
 		if [ $? -gt 0 ]
 		then
-			echo_debug "command: ls -1 $REPOSITORY_FULL | $SORT | grep -A $GET_NEW $last"
-			echo_die "Could not find last known element ( from used files ) $last in repository $REPOSITORY_FULL" 100
+			echo_debug "command: ls -1 $REPOSITORY_FULL/$SUBPATH | $SORT | grep -A $GET_NEW $last"
+			echo_die "Could not find last known element ( from used files ) $last in repository[/subpath] $REPOSITORY_FULL/$SUBPATH" 100
 		fi
 		getlist_base=`echo "$tmplist_base" | tail -n +2`
 	
 	fi
-	
+	echo_debug "last: $last"
+	echo_debug "getlist_base: $getlist_base"
+	echo_debug "deletelist_base: $deletelist_base"
+	echo_debug "keeplist_base: $keeplist_base"
 	deletelist=
 	keeplist=
 	getlist=
-	for delete in `echo "$deletelist_base"`; do deletelist="$deletelist"$'\n'"$SUBPATH/$delete"; done
-	for keep   in `echo "$keeplist_base"  `; do   keeplist="$keeplist"$'\n'"$SUBPATH/$keep"    ; done
-	for get    in `echo "$getlist_base"   `; do    getlist="$getlist"$'\n'"$SUBPATH/$get"      ; done
+	for delete in `echo "$deletelist_base"`; do [ -z "$deletelist" ] && deletelist="${deletelist}$SUBPATH/$delete" || deletelist="$deletelist"$'\n'"$SUBPATH/$delete"; done
+	for keep   in `echo   "$keeplist_base"`; do [ -z   "$keeplist" ] &&   keeplist="${keeplist}$SUBPATH/$keep"     ||   keeplist="$keeplist"$'\n'"$SUBPATH/$keep"; done
+	for get    in `echo    "$getlist_base"`; do [ -z    "$getlist" ] &&    getlist="${getlist}$SUBPATH/$get"       ||    getlist="$getlist"$'\n'"$SUBPATH/$get"; done
 
 	if [ -n "$SUBPATH" -a ! -d "$DATASET_LOCAL_FULL/$SUBPATH" ]
 	then
