@@ -245,13 +245,15 @@ repositories.  Deleting datasets and setting up/managing/deleting repositories a
    * callbacks.  executed by ddm based on action.  Can be overridden with .ddm files. (eg {pre,do,post}update)
    * workers.    called by callbacks or other workers.  Can be overridden/extended with plugins. (eg no_action, wrap_rsync, getfiles, delefiles, keepfiles, ...)
      - wrappers.   special kind of worker functions for a specific purpose (eg wrap_rsync, wrap_keep). pretend-mode switching happens here.
-     - non-wrappers (eg getfiles, deletefiles) call wrappers for 'dangerous' things, so non-wrappers don't need to implement any pretend-mode checking
+       They operate on one file or directory only.
+     - non-wrappers (eg getfiles, deletefiles) call wrappers for 'dangerous' things, so non-wrappers don't need to implement any pretend-mode checking.
    * validators.  used for validating datasets, repositories, actions, ...
 
   10.2) Notes
  
   * All functions except wrappers expect relative paths, where the root is the dataset/repository directory.
-    Wrappers are very specific, they require absolute paths.
+    Wrappers are very specific, they require absolute paths (to one directory or file).
+  * Non-wrapper workers like getfiles, deletefiles etc expect newline separated lists of files/directories.
 
 11) Examples
 
