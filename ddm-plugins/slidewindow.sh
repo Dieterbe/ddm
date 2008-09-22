@@ -59,7 +59,6 @@ slidewindow ()
 	echo_debug "currentlistsize: $currentlistsize"
 	echo_debug "usedlist_base : $usedlist_base"
 	echo_debug "usedlistsize: $usedlistsize"
-	#TODO: where does the '1' file come from?
 	if [ -z "$usedlist_base" ]
 	then
 		echo_debug "Branch: no used files"

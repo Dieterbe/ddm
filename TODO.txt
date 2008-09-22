@@ -1,5 +1,4 @@
 = 0.4 =
- * test & improve slidewindow.  check we can strip away parts from grepstring (such as 'series' if you cd directly)
  * if this list is empty, update manual header, make 0.4 branch + release
  * write examples: eg following multiple series checkout/update/..., audio-buffer, 
    documents-buffer + documents-selection with specific list of documents we want or a pattern for --include in rsync
