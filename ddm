@@ -367,7 +367,7 @@ getfiles ()
 	getlistsize=`grep -cv '^$' <<< "$getlist"`
 	echo_debug "getlist (size: $getlistsize) : $getlist"
 	
-	echo_verbose "Copying new files  ... ($getlistsize items)."
+	echo_verbose "Copying/syncing files  ... ($getlistsize items)."
 	IFS=$'\n'
 	for file in $getlist
 	do
