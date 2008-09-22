@@ -22,6 +22,7 @@
    in some cases abort operation or ask user if he wants to continue. add flag to never need manual user input.
  * allow defining some parameters in .ddm that will be used by ddm so that overriding callbacks is seldomly needed (eg make ddm more framework-esque)
  * make slidewindow work for any arbitrary path position. (eg slide over files, but also over directories contain files, or those dirs parents, etc)
+ * make the subpath concept of slidewindow more generic.  put it in set_dataset_info + make functions to prepend subpath to all files in a list
 
 
 = Someday =
