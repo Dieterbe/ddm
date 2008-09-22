@@ -362,6 +362,7 @@ keepfiles ()
 
 getfiles ()
 {
+	# note: it's your own responsability to append a '/' if you want to rsync directory contents before calling this function.
 	getlist="$1"
 	getlistsize=`grep -cv '^$' <<< "$getlist"`
 	echo_debug "getlist (size: $getlistsize) : $getlist"
@@ -374,7 +375,7 @@ getfiles ()
 		# dirname=`dirname "$file"`
 		# [ $dirname == '.' ] && wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/"
 		# [ $dirname != '.' ] && wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
-		wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$file/"
+		wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$file"
 	done
 }
 
