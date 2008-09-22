@@ -589,11 +589,11 @@ wrap_rsync ()
 	echo_verbose -n " * $src ... "
 	if [ "$user_response" == 'y' ]
 	then
-		[ "$PRETEND" == '1' ] && echo_pretend "rsync $opts $extra_opts --delete --exclude  $ignore  $src $dest"
-		[ "$PRETEND" == '0' ] &&               rsync $opts $extra_opts --delete --exclude "$ignore" $src $dest
+		[ "$PRETEND" == '1' ] && echo_pretend "rsync $opts $extra_opts --delete --exclude $ignore $src $dest"
+		[ "$PRETEND" == '0' ] &&               rsync $opts $extra_opts --delete --exclude "$ignore" "$src" "$dest"
 	else
-		[ "$PRETEND" == '1' ] && echo_pretend "rsync $opts $extra_opts --exclude  $ignore  $src $dest"
-		[ "$PRETEND" == '0' ] &&               rsync $opts $extra_opts --exclude "$ignore" $src $dest
+		[ "$PRETEND" == '1' ] && echo_pretend "rsync $opts $extra_opts --exclude $ignore $src $dest"
+		[ "$PRETEND" == '0' ] &&               rsync $opts $extra_opts --exclude "$ignore" "$src" "$dest"
 	fi
 	result=$?
 	[ $result -eq 0 -a "$PRETEND" == '0' ] && echo_verbose "success"
