@@ -406,6 +406,39 @@ wrap_keep ()
 }
 
 
+wrap_mkdir ()
+{
+	# $1 path
+	if [ -z "$1" ]
+	then
+	echo_die 'internal error: insufficient parameters to mkdir wrapper' 100
+	fi
+	dir=$1
+	echo_pretend_verbose -n "Mkdir'ing $dir ... "
+	if [ "$PRETEND" == '0' ]
+	then
+		mkdir -p "$dir"
+		if [ $? -eq 0 ]
+		then
+			echo_verbose -n "success"
+		else
+			echo -n "failed" >&2
+		fi
+	else
+		#TODO: dirs maybe need to be created recursively.  we should go up the path until the first thing that exists, and test that...
+		true
+		#parent=`dirname $dir`
+		#if [ -d "$parent" -a -w "$parent" -a -x "$parent" ]
+		#then
+		#	echo_verbose -n " should work"
+		#else
+		#	echo_verbose -n " will fail"
+		#fi
+	fi
+	echo
+}
+
+
 wrap_cd ()
 {
 	# 1$ path
