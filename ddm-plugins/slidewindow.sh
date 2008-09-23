@@ -53,8 +53,12 @@ slidewindow ()
 	
 	usedlist_full=`grep "$GREPSTRING" ~/.bash_history | grep -v '*' | grep -v '?' | grep -v grep | uniq | awk '{print $NF }'` #note: the _full aspect can be relative path, absolute path, ... !
 	usedlistsize=` grep "$GREPSTRING" ~/.bash_history | grep -v '*' | grep -v '?' | grep -v grep | uniq | wc -l`
-	usedlist_base=
+	usedlist_base=''
+	OLDIFS=$IFS
+	IFS=$'\n'
 	for used in `echo "$usedlist_full"`; do [ -z "$usedlist_base" ] && usedlist_base="`basename $used`" || usedlist_base="$usedlist_base"$'\n'"`basename $used`"; done
+	IFS=$OLDIFS
+	echo_debug "usedlist_full: $usedlist_full"
 	echo_debug "currentlist_base: $currentlist_base"
 	echo_debug "currentlistsize: $currentlistsize"
 	echo_debug "usedlist_base : $usedlist_base"
@@ -120,10 +124,12 @@ slidewindow ()
 	deletelist=
 	keeplist=
 	getlist=
+	OLDIFS=$IFS
+	IFS=$'\n'
 	for delete in `echo "$deletelist_base"`; do [ -z "$deletelist" ] && deletelist="${deletelist}$SUBPATH/$delete" || deletelist="$deletelist"$'\n'"$SUBPATH/$delete"; done
 	for keep   in `echo   "$keeplist_base"`; do [ -z   "$keeplist" ] &&   keeplist="${keeplist}$SUBPATH/$keep"     ||   keeplist="$keeplist"$'\n'"$SUBPATH/$keep"; done
 	for get    in `echo    "$getlist_base"`; do [ -z    "$getlist" ] &&    getlist="${getlist}$SUBPATH/$get"       ||    getlist="$getlist"$'\n'"$SUBPATH/$get"; done
-
+	IFS=$OLDIFS
 	if [ -n "$SUBPATH" -a ! -d "$DATASET_LOCAL_FULL/$SUBPATH" ]
 	then
 		wrap_mkdir "$DATASET_LOCAL_FULL/$SUBPATH"
