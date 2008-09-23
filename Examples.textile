@@ -44,19 +44,20 @@ and tell ddm what we want
 
 Put this in video-selection/.ddm
 
-  docheckout ()
-  {
-    do_callback doupdate
-  }
-  doupdate ()
-  {
-    wrap_cd $REPOSITORY_FULL && wrap_rsync -auR '.ddm*' 'series/Rome/Season_1/' "$DATASET_LOCAL_FULL/"
-    slidewindow 'series/Fawlty Towers/' 'mplayer.*series/Fawlty.*Towers/' 10 2
-  }
+<pre><code>docheckout ()
+{
+	do_callback doupdate
+}
+doupdate ()
+{
+	wrap_cd $REPOSITORY_FULL && wrap_rsync -auR '.ddm*' 'series/Rome/Season_1/' "$DATASET_LOCAL_FULL/"
+	slidewindow 'series/Fawlty Towers/' 'mplayer.*series/Fawlty.*Towers/' 10 2
+}
+</code></pre>
 
 This means that the update action will:
 * just rsync the series/Rome/Season_1 subdirectory - ignoring .ddm files.
-* grep your shell history and use the string 'mplayer.*series/Fawlty Towers/' to find episodes you played.  Based on that it will delete old files and make sure you have 5 episodes 
+* grep your shell history and use the string @'mplayer.*series/Fawlty Towers/'@ to find episodes you played.  Based on that it will delete old files and make sure you have 5 episodes 
 you haven't seen yet (if available in the repository), keeping also the last one you played.  (each episode is 2 files in this case, for the .avi and .srt file.)
 In this simple scenario, the checkout action is the same as the update action.
 Now let's checkout, using the verbose flag so we see exactly what happens.
