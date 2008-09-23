@@ -20,10 +20,10 @@ Call this file ddmrc and put it in @~/.config/ddm/@ (or whatever you made your $
 h3. Following some TV-series in specific ways
 
 Suppose you want to follow to follow 2 TV-series:
-* Fawlty Towers. ( you want the have the next 5 episodes availabe on your pc each time you update + the one you saw last.  all other ones can be deleted)
+* Fawlty Towers. ( you want to have the next 5 episodes, and the last viewed one available on your pc each time you update.  all other ones can be deleted)
 * Rome.  (you want to have all content available of one particular season)
 The repository can of course contain other series, and also other types of video data (such as movies), but we want to keep it simple and just follow the above 2 series.
-In this case, the obvious choice is a *selection* dataset
+In this case, the obvious choice is a *selection* dataset.
 This could be how you would organize your repository:
 
   /net/server/home/$USER/ddm-repo/video/ # name of the repository
