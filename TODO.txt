@@ -1,7 +1,8 @@
 = 0.4 =
  * if this list is empty, update manual header, make 0.4 branch + release
  * write examples: eg following multiple series checkout/update/..., audio-buffer, 
-   documents-buffer + documents-selection with specific list of documents we want or a pattern for --include in rsync
+   documents-buffer + documents-selection with specific list of documents we want or a pattern for --include in rsync.
+   examples formatted in markdown or html or whatever on github are a plus.
  * when dir contains only dataset type (eg audio/{selection,..}, like with userdirs) set_dataset_info is probably buggy! +
    other TODO in set_dataset_info (see source). 
 
@@ -44,10 +45,11 @@
    - rdiff-backup  http://www.nongnu.org/rdiff-backup/
  * better documentation for datasets: which are defined for which repository types? ( a table would be useful)
  * better documentation for actions: what does each action do by default for each dataset type? ( a table would be useful)
+ * can we make wrappers more transparent? eg just intercept calls to rm,rsync,... instead of requiring 'wrap_'<foo> explicitly.
 
 
 = Undecided =
- * commit a selection? could be useful in some scenarios but how to implement ..
+ * commit a selection? could be useful in some scenarios but how to implement ..  (rsync without --delete should do it in most cases)
 
 
 = Ideas =
