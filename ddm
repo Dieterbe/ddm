@@ -233,7 +233,7 @@ set_dataset_info()
 	# REPOSITORY_FULL=''            # full path to repository (remote or locally if network mount)
 	# (REPOSITORY_TYPE)             # type of the repository (not set here)
 	# DATASET_LOCAL_FULL=''         # full path to dataset locally (including type suffix if any)
-	# DATASET_LOCAL_PARENT_FULL=''  # the path of the parent directory of dataset ( aka dirname )
+	# DATASET_LOCAL_PARENT_FULL=''  # the path of the parent directory of the dataset ( aka dirname )
 	# DATASET_LOCAL_BASE=''         # like $DATASET_LOCAL_FULL but no path ( aka basename) 
 	# DATASET_LOCAL_NAME=''         # like $DATASET_LOCAL_BASE but no type suffix
 	# DATASET_LOCAL_TYPE=''         # buffer,copy,extensions etc
@@ -389,10 +389,6 @@ getfiles ()
 	IFS=$'\n'
 	for file in $getlist
 	do
-		# #TODO: probably need to strip local path before calling rsync
-		# dirname=`dirname "$file"`
-		# [ $dirname == '.' ] && wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/"
-		# [ $dirname != '.' ] && wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$dirname/"
 		wrap_rsync -avuq '.ddm*' "$REPOSITORY_FULL/$file" "$DATASET_LOCAL_FULL/$file"
 	done
 }
