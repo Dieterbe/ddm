@@ -1,9 +1,5 @@
 = 0.4 =
  * if this list is empty, update manual header, make 0.4 branch + release
- * write examples: eg following multiple series checkout/update/..., audio-buffer, 
-   documents-buffer + documents-selection with specific list of documents we want or a pattern for --include in rsync.
-   examples formatted in markdown or html or whatever on github are a plus.
- * when dir contains only dataset type (eg audio/{selection,..}, like with userdirs) set_dataset_info is probably buggy!
 
 
 = 0.5 =
@@ -22,6 +18,9 @@
  * allow defining some parameters in .ddm that will be used by ddm so that overriding callbacks is seldomly needed (eg make ddm more framework-esque)
  * make slidewindow work for any arbitrary path position. (eg slide over files, but also over directories contain files, or those dirs parents, etc)
  * make the subpath concept of slidewindow more generic.  put it in set_dataset_info + make functions to prepend subpath to all files in a list
+ * bug: sometimes slidewindow will delete the series folder (and re-rsync) when having a setup like in the example
+ * the consumed item is not always the last word of the command. make parameter to specify it, or how to find it in a flexible way (eg sed expression)
+ * do more testing/fixing with slidewindow
 
 
 = Someday =
@@ -45,6 +44,7 @@
  * better documentation for datasets: which are defined for which repository types? ( a table would be useful)
  * better documentation for actions: what does each action do by default for each dataset type? ( a table would be useful)
  * can we make wrappers more transparent? eg just intercept calls to rm,rsync,... instead of requiring 'wrap_'<foo> explicitly.
+ * improve xdg-user-dir-alike structures without needing to specify anything in .ddm
 
 
 = Undecided =
