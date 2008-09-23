@@ -1,0 +1,191 @@
+h2. Examples
+
+We will guide you trough the basic configuration and some typical setups.
+
+h3. ddmrc
+
+This is a pretty default config, with an svn repository reachable through https where all ddm repositories start with 'ddm-',
+and a vfs repository reachable through autofs, where all ddm repositories are in the 'ddm-repo' directory
+<pre>
+<code>
+  ALLOWED_REPOSITORY_TYPES='svn vfs'
+  DEFAULT_REPOSITORY_TYPE='vfs'
+  SVN_BASE='https://server/svn/repos/'
+  SVN_PREFIX='ddm-'
+  VFS_BASE='/net/server/home/$USER/ddm-repo'
+</code>
+</pre>
+
+Call this file ddmrc and put it in ~/.config/ddm/ (or whatever you made your $XDG_CONFIG_HOME point to )
+
+h3. Following some TV-series in specific ways
+
+Suppose you want to follow to follow 2 TV-series:
+* Fawlty Towers. ( you want the have the next 5 episodes availabe on your pc each time you update + the one you saw last.  all other ones can be deleted)
+* Rome.  (you want to have all content available of one particular season)
+The repository can of course contain other series, and also other types of video data (such as movies), but we want to keep it simple and just follow the above 2 series.
+In this case, the obvious choice is a *selection* dataset
+This could be how you would organize your repository:
+
+  /net/server/home/$USER/ddm-repo/video/ # name of the repository
+  /net/server/home/$USER/ddm-repo/video/{series,movies,...} # subdivide based on type
+  /net/server/home/$USER/ddm-repo/video/series/Fawlty Towers/<all episodes go here>
+  /net/server/home/$USER/ddm-repo/video/series/Rome/Season_1/<s1 episodes go here> 
+
+You could do this (Note the -p flag. it means pretend ) :
+
+  ~$ ddm -a checkout -d video-selection -p
+  rsync -au  --exclude .ddm* /net/server/home/dieter/ddm-repo/video/ /home/dieter/video-selection (pretend)
+  Done (pretend)
+
+Since ddm doesn't know yet what content you want exactly, it will sync everything and assume you will delete what you don't need.  This is not very efficient, so let's make the directory ourselves
+and tell ddm what we want
+
+  mkdir video-selection
+
+Put this in video-selection/.ddm
+
+  docheckout ()
+  {
+    do_callback doupdate
+  }
+  doupdate ()
+  {
+    wrap_cd $REPOSITORY_FULL && wrap_rsync -auR '.ddm*' 'series/Rome/Season_1/' "$DATASET_LOCAL_FULL/"
+    slidewindow 'series/Fawlty Towers/' 'mplayer.*series/Fawlty.*Towers/' 10 2
+  }
+
+This means that the update action will:
+* just rsync the series/Rome/Season_1 subdirectory - ignoring .ddm files.
+* grep your shell history and use the string 'mplayer.*series/Fawlty Towers/' to find episodes you played.  Based on that it will delete old files and make sure you have 5 episodes 
+you haven't seen yet (if available in the repository), keeping also the last one you played.  (each episode is 2 files in this case, for the .avi and .srt file.)
+In this simple scenario, the checkout action is the same as the update action.
+Now let's checkout, using the verbose flag so we see exactly what happens.
+
+  ~$ cd video-selection
+  ~$ ddm -a checkout -v -t selection
+  Plugin /home/dieter/.local/share/ddm/plugins/exaile.sh loading...
+  Plugin /home/dieter/.local/share/ddm/plugins/exaile.sh loaded
+  Plugin /home/dieter/.local/share/ddm/plugins/slidewindow.sh loading...
+  Plugin /home/dieter/.local/share/ddm/plugins/slidewindow.sh loaded
+  Successfully included /home/dieter/.config/ddm/ddmrc
+
+  Included /home/dieter/video-selection/.ddm
+  action checkout on dataset /home/dieter/video-selection ( selection ), repo /net/server/home/dieter/ddm-repo/video ( vfs ) [ DEBUG 0 - PRETEND 0 - VERBOSE 1 ]
+  callback precheckout not defined. skipping.
+  callback docheckout defined. executing...
+  Deleting old files ... (0 items).
+  callback doupdate defined. executing...
+  Cd'ing into /net/server/home/dieter/ddm-repo/video ... success
+   * series/Rome/Season_1/ ... building file list ... done
+  series/
+  series/Rome/
+  series/Rome/Season_1/
+  series/Rome/Season_1/rome.101.avi
+  series/Rome/Season_1/rome.102.avi
+  series/Rome/Season_1/rome.103.avi
+  series/Rome/Season_1/rome.104.avi
+  series/Rome/Season_1/rome.105.avi
+  series/Rome/Season_1/rome.106.avi
+  series/Rome/Season_1/rome.107.avi
+  series/Rome/Season_1/rome.108.avi
+  series/Rome/Season_1/rome.109.avi
+  series/Rome/Season_1/rome.110.avi
+  series/Rome/Season_1/rome.111.avi
+  series/Rome/Season_1/rome.112.avi
+
+  sent 4400242009 bytes  received 302 bytes  9989199.34 bytes/sec
+  total size is 4399703952  speedup is 1.00
+  success
+  Could not find any matching entries in your history.  I will only add stuff (maybe), and delete nothing
+  Mkdir'ing /home/dieter/video-selection/series/Fawlty Towers/ ... success
+  Deleting old files ... (0 items).
+  Keeping these files... (0 items).
+  Copying/syncing files  ... (10 items).
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x01 - A Touch Of Class.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x01 - A Touch Of Class.srt ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x02 - The Builders.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x02 - The Builders.srt ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x03 - The Wedding Party.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x03 - The Wedding Party.srt ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x04 - The Hotel Inspectors.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x04 - The Hotel Inspectors.srt ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x05 - Gourmet Night.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x05 - Gourmet Night.srt ... success
+  callback postcheckout not defined. skipping.  
+
+Great, we have all our files, now to demonstrate the slidewindow stuff.  first let's watch some episodes and sync our history.
+
+  ~/video-selection$ mplayer series/Fawlty\ Towers/Fawlty\ Towers\ -\ 1x01\ -\ A\ Touch\ Of\ Class.avi
+  ~/video-selection$ mplayer series/Fawlty\ Towers/Fawlty\ Towers\ -\ 1x02\ -\ The\ Builders.avi
+  ~/video-selection$ history -a
+
+Here's what happens when you update:
+
+  ~/video-selection$ ddm -a update -v
+  (...)
+  action update on dataset /home/dieter/video-selection ( selection ), repo /net/server/home/dieter/ddm-repo/video ( vfs ) [ DEBUG 0 - PRETEND 0 - VERBOSE 1 ]
+  (...)
+  Deleting old files ... (2 items).
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x01 - A Touch Of Class.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x01 - A Touch Of Class.srt ... success
+  Keeping these files... (2 items).
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x02 - The Builders.avi
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x02 - The Builders.srt
+  Copying/syncing files  ... (10 items).
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x03 - The Wedding Party.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x03 - The Wedding Party.srt ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x04 - The Hotel Inspectors.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x04 - The Hotel Inspectors.srt ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x05 - Gourmet Night.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x05 - Gourmet Night.srt ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x06 - The Germans.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 1x06 - The Germans.srt ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 2x01 - Communication Problems.avi ... success
+   * /net/server/home/dieter/ddm-repo/video/series/Fawlty Towers//Fawlty Towers - 2x01 - Communication Problems.srt ... success
+  callback postupdate not defined. skipping.
+
+As you can see, ddm will delete Fawly Towers episodes we don't need anymore and make sure we have some spare ones available to watch.
+The Rome directory didn't change, but if new content would have been put in the Season_1 directory in the repository, it would have been synced to the dataset.
+
+Now let's see what happens if we want to commit this dataset:
+
+  ~/video-selection$ ddm -a commit
+  No action taken.  This is either not implemented yet or just wouldn't make much sense.
+  You can 1) implement what you want in /home/dieter/video-selection/.ddm
+          2) file a feature request if this seems reasonable (or send a patch)
+  Note from the author: Maybe the user made changes to the small subset of data he has and wants to commit those..
+                        gonna be hard to implement something like that...
+
+Oh, right.
+
+h3.  Using a documents-buffer and a documents-selection
+
+If you're like me, various documents from various places end up on your hard disk.  You want to structure them locally, but you want to put them in your repository full of documents - making sure you
+have no duplicates -, but you also don't want all of them on your hard disk, you want the most important ones available to you.
+The way to do this, is using:
+* a *buffer* dataset for collecting new documents (and flushing to the repository, cleaning your local system)
+* a *selection* dataset to have you favorite ones available.
+
+In the buffer, you don't even need a .ddm file, unless ddm cannot figure out all details based on your dataset name (eg it's not called documents-buffer where documents is the name of the repository)
+Although you *could* write a .ddm file and put something like this in it:
+
+  postflush ()
+  {
+  	  fdupes -r -d $REPOSITORY_FULL # or whichever command you prefer that checks for duplicate files
+  }
+
+In the selection you could put something like this:
+
+  doupdate ()
+  {
+	# ebooks take too much space.  I want just the ones about perl, bash and Linux.
+	# not the most efficient way but yeah...
+	deletefiles "`ls -1 $DATASET_LOCAL_FULL`"
+	getfiles "`ls - 1 $DATASET_LOCAL_FULL | egrep -i 'perl|bash|linux'`"
+  }
+  postupdate ()
+  {
+  	sudo updatedb #update gnu locate database
+  }
+

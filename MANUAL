@@ -1,7 +1,3 @@
-# 
-# THIS DOCUMENTATION IS A PREVIEW.  DDM DOES NOT YET WORK LIKE THIS.
-#
-
 1) Introduction
 
 DDM is a simple tool that helps you manage your data, distributed over multiple
@@ -121,20 +117,24 @@ This goes way beyond what a "working copy" in VCS lingo is to a repository.
    - selection: a copy of a subset of the data in the repo
      (eg: your favourite movies of all your movies)
  * configuration: any (optional) configuration settings or custom actions can be specified in a file '.ddm' in the dataset.
-   This file will be sourced by bash.
+   This file will be sourced by bash, after the commandline arguments are
+   parsed.  (Eg all of these are generated first, and can then be overridden)
    This is not needed and sometimes even not possible (eg direct dataset for an unmounted filesystem)  
    These are the variables that can be specified, along with their default configuration:
-     DATASET_LOCAL        # path to dataset locally (including type suffix if any)
-     DATASET_REMOTE       # path to dataset remotely (or locally if network mount)
-     DATASET_PATH'        # just the path (until parent directory of dataset)
-     DATASET_DIR_NAME     # like $DATASET_LOCAL but no path
-     DATASET_DIR_NAME_REL # identifier to dataset, taken against pwd (could be '.','..', nothing at all, dirname, full path, ..)
-     DATASET_NAME         # like $DATASET_DIR_NAME but no type suffix
-     DATASET_TYPE         # dataset type (see above)
-     REPOSITORY_TYPE      # repository type
-   DATASET_DIR_NAME_REL is what is passed with the '-d' flag or implicitly assumed if not given (pwd).  Most variables can be derived from it, so you rarely need to specify these yourself!
-   Except REPOSITORY_TYPE and DATASET_TYPE (if it cannot be derived from the directory name of the dataset).
-   These are usually put in the .ddm file or specified as command-line options.
+     DATASET_LOCAL_REL             # identifier to dataset, taken against pwd ( could be '.','..', nothing at all, dirname, full path, ..) 
+     REPOSITORY_FULL               # full path to repository (remote or locally if network mount)
+     REPOSITORY_TYPE               # type of the repository (not set here)
+     DATASET_LOCAL_FULL            # full path to dataset locally (including type suffix if any)
+     DATASET_LOCAL_PARENT_FULL     # the path of the parent directory of the dataset ( aka dirname )
+     DATASET_LOCAL_BASE            # like $DATASET_LOCAL_FULL but no path ( aka basename) 
+     DATASET_LOCAL_NAME            # like $DATASET_LOCAL_BASE but no type suffix
+     DATASET_LOCAL_TYPE            # dataset type buffer,copy,extensions etc (see above)
+
+   DATASET_LOCAL_REL is what is passed with the '-d' flag or implicitly assumed if not given (pwd).  Most variables can be derived from it, so you rarely need to specify these yourself!
+   Except REPOSITORY_TYPE, DATASET_LOCAL_TYPE and REPOSITORY_FULL (if it cannot be derived from the directory name of the dataset).
+   Cases where you would want to do this yourself is for example if you would have a structure like ~/audio/{selection,direct} (eg you would put datasets in
+   a XDG-usedir(-alike) directories and don't want to repeat the repository name (audio) in the name of each
+   dataset).  Then you need to specify REPOSITORY_FULL and maybe also DATASET_LOCAL_NAME.
 
    You can also override the following callbacks:
      pre{checkout,commit,update,flush,backup,restore}
@@ -257,47 +257,4 @@ repositories.  Deleting datasets and setting up/managing/deleting repositories a
 
 11) Examples
 
-  9.1) Example ddmrc
-
-  This is a pretty default config, with an svn repository reachable through https
-  where all ddm repositories start with 'ddm-', and a vfs repository
-  reachable through autofs, where all ddm repositories are in the 'ddm-repo' directory
-    ALLOWED_REPOSITORY_TYPES='svn vfs'
-    DEFAULT_REPOSITORY_TYPE='vfs'
-    SVN_BASE='https://server/svn/repos/'
-    SVN_PREFIX='ddm-'
-    VFS_BASE='/net/server/home/dieter/ddm-repo'
-
-  9.2) Updating a selection of videos
-
-  Suppose you want to have a selection of videos that contains 10 episodes that you still need to watch,
-  keeping the last one you watched, and discarding all others.
-
-  The easiest way is to name the dataset video-selection, and put this .ddm in it:
-    doupdate()
-    {
-       slidewindow mplayer 10 1
-    }
-
-  Then you can just invoke ddm like this:
-    dieter@dieter-mbp:~$ ddm -a update -d video-selection -v
-    Included /home/dieter/video-selection/.ddm
-    action update on dataset name video type selection
-    Deleting old files... (3 items).
-     * /home/dieter/video-selection/910 - The One With Christmas In Tulsa.avi... success
-     * /home/dieter/video-selection/911 - The One Where Rachel Goes Back To Work.avi... success
-     * /home/dieter/video-selection/912 - The One With Phoebes Rats.avi... success
-    Keeping these files... (1 items).
-     * /home/dieter/video-selection/913 - The One Where Monica Sings.avi
-    Copying new files... (10 items).
-     * /home/dieter/video-selection/914 - The One With The Blind Dates.avi... success
-     * /home/dieter/video-selection/915 - The One With the Mugging.avi... success
-     * /home/dieter/video-selection/916 - The One With The Boob Job.avi... success
-     * /home/dieter/video-selection/917 - The One With The Memorial Service.avi... success
-     * /home/dieter/video-selection/918 - The One With The Lottery.avi... success
-     * /home/dieter/video-selection/919 - The One With Rachels Dream.avi... success
-     * /home/dieter/video-selection/920 - The One With The Soap Opera Party.avi... success
-     * /home/dieter/video-selection/921 - The One With The Fertility Test.avi... success
-     * /home/dieter/video-selection/922 - The One With The Donor.avi... success
-     * /home/dieter/video-selection/923 - 924 - The One In Barbados.avi... success
-    finished
+  See file Examples.textile
