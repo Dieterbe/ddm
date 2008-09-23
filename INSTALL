@@ -1,0 +1,5 @@
+* put the ddm somewhere in your $PATH and make sure it's executable.
+* put the plugins (if you want to use them) in .local/share/ddm/plugins/ or equivalent directory based on your $XDG_DATA_HOME preference.
+* Too have the latest and greatest, you can git clone git://github.com/Dieterbe/ddm.git
+
+Have fun :)
