@@ -1,7 +1,3 @@
-= 0.4 =
- * if this list is empty, update manual header, make 0.4 branch + release
-
-
 = 0.5 =
  * fix get_exaile plugin
  * better documentation for helper functions and plugins like slidewindow, get_exaile etc (how they work, extendability, where to store, etc)

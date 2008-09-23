@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION='0.4b'
+VERSION='0.4'
 
 # DDM
 # See included documentation

@@ -1,0 +1,29 @@
+4.0 (23-9-2008)
+ * new dataset types (dataset types are now: blob, buffer, cache, copy, direct, extension, selection)
+ * new (default) actions (default actions are now: backup, checkout, commit, flush, restore, update)
+ * actions and callbacks are addable/customizable/disableable etc
+ * some actions for certain dataset types are now implemented that weren't before (see manual)
+ * better choosen commandline switches.  especially needed for specifying (custom) actions.
+ * ddm follows XDG basedir spec now (http://standards.freedesktop.org/basedir-spec/basedir-spec-0.6.html).
+   This affects the location of ddmrc and plugins (read on)
+ * datasets can have arbitrary names now. (so it's also fully compatible with the XDG usedir spec now http://freedesktop.org/wiki/Software/xdg-user-dirs )
+   In some cases you do need to make up for this by specifying one or two vars in the .ddm file.  See manual.
+ * possibility to create plugins.
+ * 2 plugins come by default now:
+   - slidewindow (old function pluginized now)
+   - get_exaile (supposed to populate selection with favorite/most-played/... music according to the exaile
+   music player database). this plugin is still *work in progress*
+ * slidewindow is more flexible now (configurable subpaths, regex grepstring, ...) *api has changed*
+ * pretend mode
+ * validators for actions, repositories and datasets
+ * new, better and more generic wrappers for rsync, svn, rm, cd, mkdir and 'keep'
+ * refactored exit codes
+ * better validation, error handling, help information
+ * better documentation (MANUAL, examples, ...) comes with sources now + can be seen online @ http://github.com/Dieterbe/ddm)
+ * lots of changes and fixes big and small
+
+
+< blurry period here. doesn't really matter>
+
+3.0 (29-3-2008)
+ * Initial release
