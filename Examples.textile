@@ -15,7 +15,7 @@ and a vfs repository reachable through autofs, where all ddm repositories are in
   VFS_BASE='/net/server/home/$USER/ddm-repo'
 </code></pre>
 
-Call this file ddmrc and put it in ~/.config/ddm/ (or whatever you made your $XDG_CONFIG_HOME point to )
+Call this file ddmrc and put it in @~/.config/ddm/@ (or whatever you made your $XDG_CONFIG_HOME point to )
 
 h3. Following some TV-series in specific ways
 
