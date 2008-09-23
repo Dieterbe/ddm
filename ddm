@@ -248,7 +248,7 @@ set_dataset_info()
 	then
 		DATASET_LOCAL_FULL=`dirname $PWD`
 	else
-		#prepend path to make absolute, if needed
+		#prepend pwd to make path absolute, if needed
 		if grep '^/' <<< $DATASET_LOCAL_REL > /dev/null
 		then
 			DATASET_LOCAL_FULL=$DATASET_LOCAL_REL
@@ -258,11 +258,29 @@ set_dataset_info()
 		fi
 	fi
 
-	DATASET_LOCAL_BASE=`basename $DATASET_LOCAL_FULL`
+	DATASET_LOCAL_BASE=`          basename $DATASET_LOCAL_FULL`
 	DATASET_LOCAL_PARENT_FULL=`    dirname $DATASET_LOCAL_FULL`
-	DATASET_LOCAL_NAME=`    sed 's/-[^-]*$//' <<< $DATASET_LOCAL_BASE` #TODO: this is a bug. the directory can-be-named-like-this. we must check that the last part is a valid dataset type.
-	[ $ACTION != checkout ] && DATASET_LOCAL_TYPE=`   sed 's/.*-//' <<< $DATASET_LOCAL_BASE ` #TODO: see above
-	[ $ACTION != checkout ] && [ "$DATASET_LOCAL_TYPE" == "$DATASET_LOCAL_BASE" ] && DATASET_LOCAL_TYPE=$DEFAULT_DATASET_TYPE #assign default dataset type if not derived from basename
+
+	DATASET_LOCAL_TYPE_NEW=
+	DATASET_LOCAL_NAME=$DATASET_LOCAL_BASE
+	echo_debug "Trying to filter a dataset type out of the dataset name.  Beginning with: \$DATASET_LOCAL_NAME : $DATASET_LOCAL_NAME  \$DATASET_LOCAL_TYPE_NEW: $DATASET_LOCAL_TYPE_NEW"
+	for allowed in $ALLOWED_DATASET_TYPES
+	do
+		echo_debug "If type still empty, testing $allowed"
+		if [[ -z "$DATASET_LOCAL_TYPE_NEW" && "$DATASET_LOCAL_BASE" =~ ${allowed}$ ]]
+		then
+			echo_debug "Found $allowed !"
+			#DATASET_LOCAL_NAME=${DATASET_LOCAL_BASE/-$allowed} # cannot check end of string with this?
+			DATASET_LOCAL_NAME=`sed 's/-'$allowed'$//' <<< "$DATASET_LOCAL_BASE"`
+			DATASET_LOCAL_TYPE_NEW="${BASH_REMATCH[0]}"
+			echo_debug "We assigned this now: \$DATASET_LOCAL_NAME : $DATASET_LOCAL_NAME  \$DATASET_LOCAL_TYPE_NEW: $DATASET_LOCAL_TYPE_NEW"
+		fi
+	done
+
+	# if we parsed a type from the dataset name, use that (can still be overridden for checkouts !)
+	# this behavior is still subject to change/discussion.  let me know if you want this otherwise (TODO: document this better too)
+	[ $ACTION != checkout -a -n "$DATASET_LOCAL_TYPE_NEW" ] && DATASET_LOCAL_TYPE=$DATASET_LOCAL_TYPE_NEW
+	
 	[ "$REPOSITORY_TYPE" == 'svn' ] && REPOSITORY_FULL=`echo $SVN_BASE | sed 's#/$##'`"/${SVN_PREFIX}${DATASET_LOCAL_NAME}${SVN_SUFFIX}"
 	[ "$REPOSITORY_TYPE" == 'vfs' ] && REPOSITORY_FULL=`echo $VFS_BASE | sed 's#/$##'`"/${VFS_PREFIX}${DATASET_LOCAL_NAME}${VFS_SUFFIX}"
 	

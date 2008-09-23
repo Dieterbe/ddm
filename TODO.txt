@@ -3,8 +3,7 @@
  * write examples: eg following multiple series checkout/update/..., audio-buffer, 
    documents-buffer + documents-selection with specific list of documents we want or a pattern for --include in rsync.
    examples formatted in markdown or html or whatever on github are a plus.
- * when dir contains only dataset type (eg audio/{selection,..}, like with userdirs) set_dataset_info is probably buggy! +
-   other TODO in set_dataset_info (see source). 
+ * when dir contains only dataset type (eg audio/{selection,..}, like with userdirs) set_dataset_info is probably buggy!
 
 
 = 0.5 =
