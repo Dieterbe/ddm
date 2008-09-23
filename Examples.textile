@@ -7,12 +7,11 @@ h3. ddmrc
 This is a pretty default config, with an svn repository reachable through https where all ddm repositories start with 'ddm-',
 and a vfs repository reachable through autofs, where all ddm repositories are in the 'ddm-repo' directory
 
-<pre><code>
-  ALLOWED_REPOSITORY_TYPES='svn vfs'
-  DEFAULT_REPOSITORY_TYPE='vfs'
-  SVN_BASE='https://server/svn/repos/'
-  SVN_PREFIX='ddm-'
-  VFS_BASE='/net/server/home/$USER/ddm-repo'
+<pre><code>ALLOWED_REPOSITORY_TYPES='svn vfs'
+DEFAULT_REPOSITORY_TYPE='vfs'
+SVN_BASE='https://server/svn/repos/'
+SVN_PREFIX='ddm-'
+VFS_BASE='/net/server/home/$USER/ddm-repo'
 </code></pre>
 
 Call this file ddmrc and put it in @~/.config/ddm/@ (or whatever you made your $XDG_CONFIG_HOME point to )
