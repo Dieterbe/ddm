@@ -1,0 +1,16 @@
+#!/bin/sh
+source $XDG_CONFIG_HOME/ddm/config || echo "WARNING no config found"
+
+for dir in $SVN_WCS
+do
+	echo Doing "$dir"
+	svn log -r HEAD:BASE "$dir" 2>/dev/null
+	svn up "$dir"
+done
+
+for dir in $SVN_WCS_ROOT
+do
+	echo Doing "$dir"
+	svn log -r HEAD:BASE "$dir" 2>/dev/null
+	sudo svn up "$dir"
+done

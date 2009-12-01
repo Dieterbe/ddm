@@ -1,0 +1,17 @@
+#!/bin/sh
+source $XDG_CONFIG_HOME/ddm/config || echo "WARNING no config found"
+
+echo "Svn adding..."
+to_commit=
+for item in $SVN_AUTO_ADD
+do
+	svn add "$item" 2>/dev/null
+done
+for item in $SVN_AUTO_COMMIT
+do
+	[ -r "$item" ] && to_commit="$to_commit $item"
+done
+
+echo "Svn committing..."
+echo svn commit -m "'natural evolution updates'" $to_commit
+svn commit -m 'natural evolution updates' $to_commit
