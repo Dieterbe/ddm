@@ -17,6 +17,7 @@
  * bug: sometimes slidewindow will delete the series folder (and re-rsync) when having a setup like in the example
  * the consumed item is not always the last word of the command. make parameter to specify it, or how to find it in a flexible way (eg sed expression)
  * do more testing/fixing with slidewindow
+ * fix width of textfiles not shown properly on github
 
 
 = Someday =
@@ -30,13 +31,14 @@
    - git           git has a pretty efficient storage system, although it doesn't store owner/group, permissions, xattrs etc
      could help:
      * metastore     http://david.hardeman.nu/software.php#metastore
-     * gibak         http://eigenclass.org/hiki/gibak-backup-system-introduction
+     * gibak         http://eigenclass.org/hiki/gibak-backup-system-introduction  -> does stuff + implements metastore in a better way
    - fsvs          http://fsvs.tigris.org/
    - svk           http://svk.bestpractical.com/view/HomePage
    - scord         http://scord.sourceforge.net/
    - rsync wrapper http://www.mikerubel.org/computers/rsync_snapshots/ http://www.sanitarium.net/golug/rsync_backups.html
    - rsnapshot     http://rsnapshot.org/
    - rdiff-backup  http://www.nongnu.org/rdiff-backup/
+   - dar
  * better documentation for datasets: which are defined for which repository types? ( a table would be useful)
  * better documentation for actions: what does each action do by default for each dataset type? ( a table would be useful)
  * can we make wrappers more transparent? eg just intercept calls to rm,rsync,... instead of requiring 'wrap_'<foo> explicitly.
