@@ -1,0 +1,27 @@
+#!/bin/bash
+
+function usage ()
+{
+	echo "$0 kind filename"
+	echo "kind: a \"repository identifier\" recognized by ddm"
+	exit 1
+}
+
+function fail ()
+{
+	echo "could not buffer (= queue for submission) file" >&2
+	exit 2
+}
+
+[ -z "$1" ] && usage
+[ -z "$2" ] && usage
+
+kind="$1"
+file="$2"
+
+[ -f "$file" ] || usage
+#TODO: check_is_in $2, maybe a new lib like lib-misc.sh like libui-sh
+
+source `which ddm-lib`
+
+buffer || fail

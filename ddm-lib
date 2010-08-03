@@ -1,0 +1,58 @@
+#!/bin/bash
+source $XDG_CONFIG_HOME/ddm/ddmrc
+if [ -z "$DDM_REMOTE" ]
+then
+	echo "You must set your \$DDM_REMOTE so I can know where to send files to"
+fi
+
+# TODO instead of aborting when already exists, compare checksums, if match, throw away local copy
+
+function buffer ()
+{
+	echo "moving file $file ..."
+	mkdir -p $XDG_DATA_HOME/ddm/buffer/$kind/ || exit 2
+	if [ -e $XDG_DATA_HOME/ddm/buffer/$kind/$file ]
+	then
+		echo "file $file already exists. aborting"
+		exit 1
+	fi
+	if mv $file $XDG_DATA_HOME/ddm/buffer/$kind/
+	then
+		echo "moving success"
+		return 0
+	fi
+	echo "moving failed"
+	return 1
+}
+
+function submit ()
+{
+	case $kind in
+		remote-root)
+			path=
+		;;
+		remote-torrents)
+			path='rtorrent/torrents/'
+		;;
+	esac
+	if ! ssh $DDM_REMOTE "mkdir -p $kind"
+	then
+		echo "could not create/verify $DDM_REMOTE:$kind"
+		exit 2
+	fi
+	if ssh $DDM_REMOTE "[ -e $path/$file ]"
+	then
+		echo "file $DDM_REMOTE:$path/$file already exists. aborting"
+		exit 1
+	fi
+	echo "submitting file $file ..."
+	if scp -rp "$file" $DDM_REMOTE:$path/
+	then
+		rm -rfv "$file"
+		echo "submission success"
+		return 0
+	fi
+	echo "submission failed"
+	return 1
+}
+
