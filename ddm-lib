@@ -7,6 +7,34 @@ fi
 
 # TODO instead of aborting when already exists, compare checksums, if match, throw away local copy
 
+# format of remotes list:
+# <remote-id>[ <path>]
+# no path-> empty path
+
+function remote_check ()
+{
+	egrep -q "^$1[ |$]" $XDG_CONFIG_HOME/ddm/remotes
+}
+
+function remote_list ()
+{
+	cut -d ' ' -f1 $XDG_CONFIG_HOME/ddm/remotes
+}
+
+# returns empty string for undefined remotes, or remotes without path specified
+function remote_get_path ()
+{
+	awk "/^$1 / {print \$2}" $XDG_CONFIG_HOME/ddm/remotes
+}
+
+function usage ()
+{
+	echo "$0 kind file/directory name"
+	echo -e "kind: a \"repository identifier\" that you have defined in your \$XDG_CONFIG_HOME/ddm/remotes.  Ie one of:\n`remote_list`"
+	exit 1
+}
+
+
 function buffer ()
 {
 	echo "moving file/directory $file ..."
@@ -27,14 +55,8 @@ function buffer ()
 
 function submit ()
 {
-	case $kind in
-		remote-root)
-			path=
-		;;
-		remote-torrents)
-			path='rtorrent/torrents/'
-		;;
-	esac
+	path=`remote_get_path $kind`
+
 	if ! ssh $DDM_REMOTE "mkdir -p $path"
 	then
 		echo "could not create/verify $DDM_REMOTE:$path"
