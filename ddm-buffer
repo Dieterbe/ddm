@@ -2,7 +2,7 @@
 
 function usage ()
 {
-	echo "$0 kind filename"
+	echo "$0 kind file/directory name"
 	echo "kind: a \"repository identifier\" recognized by ddm"
 	exit 1
 }
@@ -19,7 +19,7 @@ function fail ()
 kind="$1"
 file="$2"
 
-[ -f "$file" ] || usage
+[ -e "$file" ] || usage
 #TODO: check_is_in $2, maybe a new lib like lib-misc.sh like libui-sh
 
 source `which ddm-lib`

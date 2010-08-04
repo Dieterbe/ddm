@@ -9,7 +9,7 @@ fi
 
 function buffer ()
 {
-	echo "moving file $file ..."
+	echo "moving file/directory $file ..."
 	mkdir -p $XDG_DATA_HOME/ddm/buffer/$kind/ || exit 2
 	if [ -e $XDG_DATA_HOME/ddm/buffer/$kind/$file ]
 	then
