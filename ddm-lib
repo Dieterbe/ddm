@@ -35,9 +35,9 @@ function submit ()
 			path='rtorrent/torrents/'
 		;;
 	esac
-	if ! ssh $DDM_REMOTE "mkdir -p $kind"
+	if ! ssh $DDM_REMOTE "mkdir -p $path"
 	then
-		echo "could not create/verify $DDM_REMOTE:$kind"
+		echo "could not create/verify $DDM_REMOTE:$path"
 		exit 2
 	fi
 	if ssh $DDM_REMOTE "[ -e $path/$file ]"
