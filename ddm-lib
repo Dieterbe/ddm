@@ -44,6 +44,11 @@ function buffer ()
 		echo "file $file already exists. aborting"
 		exit 1
 	fi
+	if [ `readlink -f $file` = "$(readlink -f $XDG_DATA_HOME/ddm/buffer/$kind/`basename $file`)" ];
+	then
+		echo "$file is already in the buffer. leaving it"
+		return 0
+	fi
 	if mv $file $XDG_DATA_HOME/ddm/buffer/$kind/
 	then
 		echo "moving success"
