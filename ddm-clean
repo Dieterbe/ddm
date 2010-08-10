@@ -21,4 +21,21 @@ do
 done
 
 #TODO: delete all grep 'not found' * in $HOME./cheats
-#TODO: hooks, bvb if xml en only mtime changed, then revert, anders niet
+
+dirtyfiles=`svn status $HOME | head -n -2 | grep -v ^D | grep -v '^!' | grep -v '^Performing status' | awk '{print $NF}'`
+for i in $dirtyfiles;
+do
+	base=`basename $i`
+	if [ -r $XDG_CONFIG_HOME/ddm/ignores/$base ]; #NOTE: this could give conflicts, if you have files in multiple locations with the same basename (ie. 'rc')
+	then
+		# take the diff, suppress the header, egrep -v all lines matching the pattern, and check if there are still changes after that.
+		if ! svn diff $i | tail -n +6 | egrep -v -f $XDG_CONFIG_HOME/ddm/ignores/$base | egrep -q '^(\+|\-)'
+		then
+			echo "Auto reverting $i, because all changes in there are irrelevant, as given by $XDG_CONFIG_HOME/ddm/ignores/$base"
+			svn revert $i
+		else
+			echo "$i has changes not matching $XDG_CONFIG_HOME/ddm/ignores/$base, so you should probably commit those:"
+			svn diff $i | egrep -v -f $XDG_CONFIG_HOME/ddm/ignores/$base
+		fi
+	fi
+done
