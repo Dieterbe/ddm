@@ -62,10 +62,14 @@ function submit ()
 {
 	path=`remote_get_path $kind`
 
-	if ! ssh $DDM_REMOTE "mkdir -p $path"
+	if [ -n "$path" ]
 	then
-		echo "could not create/verify $DDM_REMOTE:$path"
-		exit 2
+		if ! ssh $DDM_REMOTE "mkdir -p $path"
+		then
+			echo "could not create/verify $DDM_REMOTE:$path"
+			exit 2
+		fi
+		path="$path/"
 	fi
 	if ssh $DDM_REMOTE "[ -e $path/$file ]"
 	then
@@ -73,7 +77,7 @@ function submit ()
 		exit 1
 	fi
 	echo "submitting file $file ..."
-	if scp -rp "$file" $DDM_REMOTE:$path/
+	if scp -rp "$file" $DDM_REMOTE:$path
 	then
 		rm -rfv "$file"
 		echo "submission success"
