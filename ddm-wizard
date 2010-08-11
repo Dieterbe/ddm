@@ -1,0 +1,8 @@
+#!/bin/sh
+[ -n "$1" ] || exit 2
+file=$1
+cmd=`echo -e 'ddm-move\nddm-buffer' | dmenu`
+source `which ddm-lib`
+remote=`remote_list | dmenu`
+$cmd $remote $file
+
