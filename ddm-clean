@@ -1,20 +1,20 @@
 #!/bin/sh
 source $XDG_CONFIG_HOME/ddm/config || echo "WARNING no config found"
 
-for item in $SVN_STAY_THE_SAME_DAMNIT
+for item in "${SVN_STAY_THE_SAME_DAMNIT[@]}"
 do
 	echo Reverting "$item"
 	svn revert -R "$item"
 done
 
-for item in $SVN_GO_AWAY_AND_DONT_COME_BACK
+for item in "${SVN_GO_AWAY_AND_DONT_COME_BACK[@]}"
 do
 	echo "Rm'ing $item"
 	rm -rf "$item" 2>/dev/null
 done
 
 #TODO: warn user if the db's are in use (eg FF is running)
-for db in $SQLITE_DBS
+for db in "${SQLITE_DBS[@]}"
 do
 	echo "vacuuming $db"
 	sqlite3 $db 'VACUUM;'
