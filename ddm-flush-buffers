@@ -1,0 +1,18 @@
+#!/bin/bash
+
+source `which ddm-lib`
+
+for buffer in $(find $XDG_DATA_HOME/ddm/buffer -mindepth 1 -maxdepth 1 -type d)
+do
+	buffer_base=`basename "$buffer"`
+	echo "Flushing buffer $buffer_base"
+	for entry in $(find $buffer -mindepth 1 -maxdepth 1)
+	do
+		echo ddm-move $buffer_base "$entry"
+		ddm-move $buffer_base "$entry"
+	done
+	if [ ! "$(ls -A $buffer)" ]
+	then
+		rm -rfv $buffer
+	fi
+done

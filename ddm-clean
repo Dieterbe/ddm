@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 source $XDG_CONFIG_HOME/ddm/config || echo "WARNING no config found"
 
 for item in "${SVN_STAY_THE_SAME_DAMNIT[@]}"
@@ -25,17 +25,31 @@ done
 dirtyfiles=`svn status $HOME | head -n -2 | grep -v ^D | grep -v '^!' | grep -v '^Performing status' | awk '{print $NF}'`
 for i in $dirtyfiles;
 do
-	base=`basename $i`
-	if [ -r $XDG_CONFIG_HOME/ddm/ignores/$base ]; #NOTE: this could give conflicts, if you have files in multiple locations with the same basename (ie. 'rc')
+	# we take $i, get the absolute path, and convert '/' into '_'.
+	# the first file in $XDG_CONFIG_HOME/ddm/ignores/, that matches (regex with '$' for the end added) against this name, is taken
+	realname=`readlink -f "$i"`
+	escaped=${realname//\//_}
+	while IFS= read -r -d '' file; do
+		ignores=
+		file=`echo "$file" | sed 's#^\./##'`
+		if [[ $escaped =~ $file$ ]]
+		then
+			ignores=$XDG_CONFIG_HOME/ddm/ignores/$file
+			break
+		fi
+	done < <(cd $XDG_CONFIG_HOME/ddm/ignores && find . -maxdepth 1 -type f -print0)
+
+
+	if [ -n "$ignores" ];
 	then
 		# take the diff, suppress the header, egrep -v all lines matching the pattern, and check if there are still changes after that.
-		if ! svn diff $i | tail -n +6 | egrep -v -f $XDG_CONFIG_HOME/ddm/ignores/$base | egrep -q '^(\+|\-)'
+		if ! svn diff $i | tail -n +6 | egrep -v -f $ignores | egrep -q '^(\+|\-)'
 		then
-			echo "Auto reverting $i, because all changes in there are irrelevant, as given by $XDG_CONFIG_HOME/ddm/ignores/$base"
+			echo "Auto reverting $i, because all changes in there are irrelevant, as given by $ignores"
 			svn revert $i
 		else
-			echo "$i has changes not matching $XDG_CONFIG_HOME/ddm/ignores/$base, so you should probably commit those:"
-			svn diff $i | egrep -v -f $XDG_CONFIG_HOME/ddm/ignores/$base
+			echo "$i has changes not matching $ignores, so you should probably commit those:"
+			svn diff $i | egrep -v -f $ignores
 		fi
 	fi
 done
