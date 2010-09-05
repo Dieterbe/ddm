@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source $DESTDIR/lib/ddm/ddm-lib
+source $PREFIX/lib/ddm/ddm-lib
 
 function fail ()
 {
